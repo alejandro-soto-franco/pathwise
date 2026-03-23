@@ -160,20 +160,18 @@ pub fn simulate<'py>(
             .map_err(to_py_err)?;
             Ok(numpy::PyArray2::from_owned_array_bound(py, result))
         }
-        SDEKind::Custom { drift, diffusion } => {
-            simulate_serial(
-                py,
-                drift,
-                diffusion,
-                use_milstein,
-                x0,
-                t0,
-                t1,
-                n_paths,
-                n_steps,
-                seed,
-            )
-        }
+        SDEKind::Custom { drift, diffusion } => simulate_serial(
+            py,
+            drift,
+            diffusion,
+            use_milstein,
+            x0,
+            t0,
+            t1,
+            n_paths,
+            n_steps,
+            seed,
+        ),
     }
 }
 

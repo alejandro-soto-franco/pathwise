@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 /// Non-finite values (NaN, inf, -inf) pass through unchanged.
 fn fmt_f64(v: f64) -> String {
     if !v.is_finite() {
-        return format!("{v}");  // NaN, inf, -inf pass through as-is
+        return format!("{v}"); // NaN, inf, -inf pass through as-is
     }
     let s = format!("{v}");
     if s.contains('.') || s.contains('e') {
@@ -19,9 +19,19 @@ fn fmt_f64(v: f64) -> String {
 /// Built-in variants enable GIL-free parallel dispatch in simulate().
 pub(crate) enum SDEKind {
     Bm,
-    Gbm { mu: f64, sigma: f64 },
-    Ou { theta: f64, mu: f64, sigma: f64 },
-    Custom { drift: PyObject, diffusion: PyObject },
+    Gbm {
+        mu: f64,
+        sigma: f64,
+    },
+    Ou {
+        theta: f64,
+        mu: f64,
+        sigma: f64,
+    },
+    Custom {
+        drift: PyObject,
+        diffusion: PyObject,
+    },
 }
 
 impl std::fmt::Debug for SDEKind {
@@ -30,7 +40,10 @@ impl std::fmt::Debug for SDEKind {
             SDEKind::Bm => write!(f, "SDEKind::Bm"),
             SDEKind::Gbm { mu, sigma } => write!(f, "SDEKind::Gbm {{ mu: {mu}, sigma: {sigma} }}"),
             SDEKind::Ou { theta, mu, sigma } => {
-                write!(f, "SDEKind::Ou {{ theta: {theta}, mu: {mu}, sigma: {sigma} }}")
+                write!(
+                    f,
+                    "SDEKind::Ou {{ theta: {theta}, mu: {mu}, sigma: {sigma} }}"
+                )
             }
             SDEKind::Custom { .. } => write!(f, "SDEKind::Custom(<PyObject>)"),
         }
