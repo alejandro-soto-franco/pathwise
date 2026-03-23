@@ -74,9 +74,9 @@ paths = pw.simulate(ou_custom, pw.euler(), n_paths=1000, n_steps=200, t1=1.0)
 | Function | SDE |
 |----------|-----|
 | `pw.bm()` | $dX = dW$ |
-| `pw.gbm(mu, sigma)` | $dX = \mu X \; dt + \sigma X \; dW$ |
-| `pw.ou(theta, mu, sigma)` | $dX = \theta(\mu - X) \; dt + \sigma \; dW$ |
-| `pw.sde(drift, diffusion)` | $dX = f(X,t) \; dt + g(X,t) \; dW$ |
+| `pw.gbm(mu, sigma)` | $dX = \mu X dt + \sigma X dW$ |
+| `pw.ou(theta, mu, sigma)` | $dX = \theta(\mu - X) dt + \sigma dW$ |
+| `pw.sde(drift, diffusion)` | $dX = f(X,t) dt + g(X,t) dW$ |
 
 ### Schemes
 
