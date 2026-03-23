@@ -26,6 +26,29 @@ fn splitmix64(mut x: u64) -> u64 {
 ///
 /// Non-finite values (overflow, NaN) are recorded as `f64::NAN` and simulation
 /// continues. Check for NaN in output if numerical stability is a concern.
+///
+/// # Examples
+///
+/// Simulate an Ornstein-Uhlenbeck process with the Milstein scheme:
+///
+/// ```
+/// use pathwise_core::{simulate, ou, milstein};
+///
+/// let o = ou(2.0, 1.0, 0.3);
+/// let scheme = milstein();
+/// let paths = simulate(
+///     &o.drift,
+///     &o.diffusion,
+///     &scheme,
+///     0.5,   // x0 (off long-run mean to see mean reversion)
+///     0.0,   // t0
+///     1.0,   // t1
+///     10,    // n_paths
+///     100,   // n_steps
+///     42,    // seed
+/// ).expect("simulate failed");
+/// assert_eq!(paths.shape(), &[10, 101]);
+/// ```
 #[allow(clippy::too_many_arguments)]
 pub fn simulate<D, G, SC>(
     drift: &D,
@@ -119,7 +142,18 @@ mod tests {
     #[test]
     fn simulate_ou_mean_reverts_on_average() {
         let o = ou(5.0, 3.0, 0.1);
-        let out = simulate(&o.drift, &o.diffusion, &euler(), 0.0, 0.0, 1.0, 2000, 500, 0).unwrap();
+        let out = simulate(
+            &o.drift,
+            &o.diffusion,
+            &euler(),
+            0.0,
+            0.0,
+            1.0,
+            2000,
+            500,
+            0,
+        )
+        .unwrap();
         let last_col = out.column(500);
         let mean: f64 = last_col.iter().sum::<f64>() / 2000.0;
         assert!((mean - 3.0).abs() < 0.1, "OU mean={} expected ~3.0", mean);
