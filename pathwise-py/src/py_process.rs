@@ -1,69 +1,86 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyCFunction, PyTuple};
 
-/// Python-facing SDE wrapper. Stores drift/diffusion as Python callables.
-/// Simulation loop calls them via the GIL (see py_simulate.rs).
+/// Format an f64 so it always contains a decimal point, matching Python float repr.
+/// e.g. 2.0 -> "2.0", 0.05 -> "0.05"
+fn fmt_f64(v: f64) -> String {
+    let s = format!("{v}");
+    if s.contains('.') || s.contains('e') {
+        s
+    } else {
+        format!("{v}.0")
+    }
+}
+
+/// Tagged union distinguishing built-in Rust processes from custom Python callables.
+/// Built-in variants enable GIL-free parallel dispatch in simulate().
+pub enum SDEKind {
+    Bm,
+    Gbm { mu: f64, sigma: f64 },
+    Ou { theta: f64, mu: f64, sigma: f64 },
+    Custom { drift: PyObject, diffusion: PyObject },
+}
+
+/// Python-facing SDE. Stores either Rust parameters (built-ins) or Python callables (custom).
 #[pyclass(name = "SDE")]
 pub struct PySDE {
-    pub drift_fn: PyObject,
-    pub diffusion_fn: PyObject,
+    pub kind: SDEKind,
 }
 
 #[pymethods]
 impl PySDE {
+    /// Construct a custom SDE directly. Prefer pw.sde(drift, diffusion) at the Python level.
     #[new]
     pub fn new(drift: PyObject, diffusion: PyObject) -> Self {
-        Self { drift_fn: drift, diffusion_fn: diffusion }
+        Self {
+            kind: SDEKind::Custom { drift, diffusion },
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        match &self.kind {
+            SDEKind::Bm => "SDE(bm)".to_string(),
+            SDEKind::Gbm { mu, sigma } => {
+                format!("SDE(gbm, mu={}, sigma={})", fmt_f64(*mu), fmt_f64(*sigma))
+            }
+            SDEKind::Ou { theta, mu, sigma } => {
+                format!(
+                    "SDE(ou, theta={}, mu={}, sigma={})",
+                    fmt_f64(*theta),
+                    fmt_f64(*mu),
+                    fmt_f64(*sigma)
+                )
+            }
+            SDEKind::Custom { .. } => "SDE(custom)".to_string(),
+        }
     }
 }
 
-/// Standard Brownian motion: drift=0, diffusion=1
+/// Standard Brownian motion: dX = dW
 #[pyfunction]
-pub fn bm(py: Python<'_>) -> PyResult<PySDE> {
-    let drift = PyCFunction::new_closure_bound(py, None, None,
-        |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> { Ok(0.0) }
-    )?;
-    let diff = PyCFunction::new_closure_bound(py, None, None,
-        |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> { Ok(1.0) }
-    )?;
-    Ok(PySDE::new(drift.into_any().unbind(), diff.into_any().unbind()))
+pub fn bm(_py: Python<'_>) -> PySDE {
+    PySDE { kind: SDEKind::Bm }
 }
 
-/// Geometric Brownian motion: drift=mu*x, diffusion=sigma*x
+/// Geometric Brownian motion: dX = mu*X dt + sigma*X dW
 #[pyfunction]
-pub fn gbm(py: Python<'_>, mu: f64, sigma: f64) -> PyResult<PySDE> {
-    let drift = PyCFunction::new_closure_bound(py, None, None,
-        move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-            let x: f64 = args.get_item(0)?.extract()?;
-            Ok(mu * x)
-        }
-    )?;
-    let diff = PyCFunction::new_closure_bound(py, None, None,
-        move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-            let x: f64 = args.get_item(0)?.extract()?;
-            Ok(sigma * x)
-        }
-    )?;
-    Ok(PySDE::new(drift.into_any().unbind(), diff.into_any().unbind()))
+pub fn gbm(_py: Python<'_>, mu: f64, sigma: f64) -> PySDE {
+    PySDE {
+        kind: SDEKind::Gbm { mu, sigma },
+    }
 }
 
-/// Ornstein-Uhlenbeck: drift=theta*(mu-x), diffusion=sigma
+/// Ornstein-Uhlenbeck: dX = theta*(mu - X) dt + sigma dW
 #[pyfunction]
-pub fn ou(py: Python<'_>, theta: f64, mu: f64, sigma: f64) -> PyResult<PySDE> {
-    let drift = PyCFunction::new_closure_bound(py, None, None,
-        move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-            let x: f64 = args.get_item(0)?.extract()?;
-            Ok(theta * (mu - x))
-        }
-    )?;
-    let diff = PyCFunction::new_closure_bound(py, None, None,
-        move |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> { Ok(sigma) }
-    )?;
-    Ok(PySDE::new(drift.into_any().unbind(), diff.into_any().unbind()))
+pub fn ou(_py: Python<'_>, theta: f64, mu: f64, sigma: f64) -> PySDE {
+    PySDE {
+        kind: SDEKind::Ou { theta, mu, sigma },
+    }
 }
 
 /// Construct a custom SDE from Python drift and diffusion callables.
 #[pyfunction]
 pub fn sde(_py: Python<'_>, drift: PyObject, diffusion: PyObject) -> PySDE {
-    PySDE::new(drift, diffusion)
+    PySDE {
+        kind: SDEKind::Custom { drift, diffusion },
+    }
 }

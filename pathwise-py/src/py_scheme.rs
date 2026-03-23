@@ -9,17 +9,33 @@ pub struct PyMilstein;
 #[pymethods]
 impl PyEuler {
     #[new]
-    fn new() -> Self { PyEuler }
+    fn new() -> Self {
+        PyEuler
+    }
+
+    fn __repr__(&self) -> &str {
+        "euler()"
+    }
 }
 
 #[pymethods]
 impl PyMilstein {
     #[new]
-    fn new() -> Self { PyMilstein }
+    fn new() -> Self {
+        PyMilstein
+    }
+
+    fn __repr__(&self) -> &str {
+        "milstein()"
+    }
 }
 
 #[pyfunction]
-pub fn euler() -> PyEuler { PyEuler }
+pub fn euler() -> PyEuler {
+    PyEuler
+}
 
 #[pyfunction]
-pub fn milstein() -> PyMilstein { PyMilstein }
+pub fn milstein() -> PyMilstein {
+    PyMilstein
+}
