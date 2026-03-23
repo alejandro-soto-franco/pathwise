@@ -2,7 +2,11 @@ use pyo3::prelude::*;
 
 /// Format an f64 so it always contains a decimal point, matching Python float repr.
 /// e.g. 2.0 -> "2.0", 0.05 -> "0.05"
+/// Non-finite values (NaN, inf, -inf) pass through unchanged.
 fn fmt_f64(v: f64) -> String {
+    if !v.is_finite() {
+        return format!("{v}");  // NaN, inf, -inf pass through as-is
+    }
     let s = format!("{v}");
     if s.contains('.') || s.contains('e') {
         s
@@ -13,17 +17,30 @@ fn fmt_f64(v: f64) -> String {
 
 /// Tagged union distinguishing built-in Rust processes from custom Python callables.
 /// Built-in variants enable GIL-free parallel dispatch in simulate().
-pub enum SDEKind {
+pub(crate) enum SDEKind {
     Bm,
     Gbm { mu: f64, sigma: f64 },
     Ou { theta: f64, mu: f64, sigma: f64 },
     Custom { drift: PyObject, diffusion: PyObject },
 }
 
+impl std::fmt::Debug for SDEKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SDEKind::Bm => write!(f, "SDEKind::Bm"),
+            SDEKind::Gbm { mu, sigma } => write!(f, "SDEKind::Gbm {{ mu: {mu}, sigma: {sigma} }}"),
+            SDEKind::Ou { theta, mu, sigma } => {
+                write!(f, "SDEKind::Ou {{ theta: {theta}, mu: {mu}, sigma: {sigma} }}")
+            }
+            SDEKind::Custom { .. } => write!(f, "SDEKind::Custom(<PyObject>)"),
+        }
+    }
+}
+
 /// Python-facing SDE. Stores either Rust parameters (built-ins) or Python callables (custom).
 #[pyclass(name = "SDE")]
 pub struct PySDE {
-    pub kind: SDEKind,
+    pub(crate) kind: SDEKind,
 }
 
 #[pymethods]
