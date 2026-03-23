@@ -62,3 +62,15 @@ def test_simulate_raises_on_gpu_device():
 def test_numerical_divergence_exception_is_catchable():
     assert issubclass(pw.NumericalDivergence, ArithmeticError)
     assert issubclass(pw.ConvergenceError, RuntimeError)
+
+
+def test_builtin_repr():
+    assert repr(pw.bm()) == "SDE(bm)"
+    assert repr(pw.gbm(0.05, 0.2)) == "SDE(gbm, mu=0.05, sigma=0.2)"
+    assert repr(pw.ou(2.0, 1.0, 0.3)) == "SDE(ou, theta=2.0, mu=1.0, sigma=0.3)"
+    assert "custom" in repr(pw.sde(lambda x, t: x, lambda x, t: 1.0))
+
+
+def test_scheme_repr():
+    assert repr(pw.euler()) == "euler()"
+    assert repr(pw.milstein()) == "milstein()"
