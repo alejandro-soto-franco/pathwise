@@ -14,5 +14,6 @@ pub trait Scheme: Send + Sync {
 }
 
 pub mod euler;
-// milstein module added in Task 7 once milstein.rs exists
+pub mod milstein;
 pub use euler::{EulerMaruyama, euler};
+pub use milstein::{Milstein, milstein};
