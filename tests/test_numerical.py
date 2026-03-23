@@ -48,7 +48,7 @@ def bs_call(x0, K, mu, sigma, T):
 #
 # Theory (Euler on GBM): E[X_N] = x0*(1+mu*dt)^N, exact = x0*exp(mu*T)
 #   disc_err(N=5)  = 0.0382, disc_err(N=10) = 0.0198, disc_err(N=20) = 0.0101
-#   MC noise (n=20k, sigma~0.88) = 0.0062 — SNR > 1.5 for N in [5,10,20]
+#   MC noise (n=20k, sigma~0.88) = 0.0062:SNR > 1.5 for N in [5,10,20]
 # ---------------------------------------------------------------------------
 
 MU_WEAK, SIGMA_WEAK, X0_WEAK, T_WEAK = 0.5, 0.5, 1.0, 1.0
@@ -198,7 +198,7 @@ def test_milstein_strong_error_less_than_euler():
 # ---------------------------------------------------------------------------
 
 def test_bm_increments_are_normal():
-    """BM increments over dt should be N(0, dt) — KS test p > 0.01."""
+    """BM increments over dt should be N(0, dt):KS test p > 0.01."""
     n_paths, n_steps, t1 = 1000, 200, 1.0
     dt = t1 / n_steps
     paths = pw.simulate(pw.bm(), pw.euler(),
@@ -245,7 +245,7 @@ def test_bm_quadratic_variation_converges_to_t():
 # ---------------------------------------------------------------------------
 
 def test_gbm_terminal_is_lognormal():
-    """log(X_T) ~ N(log(x0) + (mu - sigma^2/2)*T, sigma^2*T) — KS test p > 0.01."""
+    """log(X_T) ~ N(log(x0) + (mu - sigma^2/2)*T, sigma^2*T):KS test p > 0.01."""
     mu, sigma, x0, t1 = 0.05, 0.2, 1.0, 1.0
     n_paths, n_steps = 3000, 500
     paths = pw.simulate(pw.gbm(mu, sigma), pw.euler(),
@@ -356,7 +356,7 @@ def test_bm_paths_are_independent():
                         n_paths=n_paths, n_steps=n_steps, t1=1.0, x0=0.0)
     # Independence of TERMINAL VALUES (not full paths, which are autocorrelated time series)
     terminals = paths[:, -1]  # shape (n_paths,)
-    # Split into two halves and correlate — under independence, r ~ 0
+    # Split into two halves and correlate:under independence, r ~ 0
     half = n_paths // 2
     r = np.corrcoef(terminals[:half], terminals[half:])[0, 1]
     print(f"\nBM terminal half-half correlation: r={r:.4f} (expected ~0)")
@@ -380,7 +380,7 @@ def test_gbm_paths_stay_positive():
     """GBM paths should remain positive (no sign flip)."""
     paths = pw.simulate(pw.gbm(0.05, 0.2), pw.euler(),
                         n_paths=200, n_steps=500, t1=1.0, x0=1.0)
-    assert np.all(paths > 0), "GBM path crossed zero — numerical instability"
+    assert np.all(paths > 0), "GBM path crossed zero:numerical instability"
 
 
 def test_ou_bounded_paths():

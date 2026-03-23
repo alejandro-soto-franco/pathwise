@@ -1,13 +1,13 @@
 /// Full numerical convergence tests for pathwise-core.
 ///
 /// # Strong convergence (common-noise)
-///   euler_strong_order_on_gbm    — order ~0.5
-///   milstein_strong_order_on_gbm — order ~1.0
-///   milstein_stronger_than_euler_strong — Milstein error < Euler at same step count
+///   euler_strong_order_on_gbm: order ~0.5
+///   milstein_strong_order_on_gbm: order ~1.0
+///   milstein_stronger_than_euler_strong: Milstein error < Euler at same step count
 ///
 /// # Weak convergence (Monte Carlo)
-///   euler_weak_error_monotone    — weak error decreases as dt decreases (Euler)
-///   milstein_weak_error_monotone — weak error decreases as dt decreases (Milstein)
+///   euler_weak_error_monotone: weak error decreases as dt decreases (Euler)
+///   milstein_weak_error_monotone: weak error decreases as dt decreases (Milstein)
 ///
 ///   Note on weak order measurement: E[X_T] for GBM has weak disc error O(dt) whose
 ///   coefficient is small. Measuring the exponent accurately requires n >> sigma^2/dt^2.
@@ -15,10 +15,10 @@
 ///   where we can use coarser grids and larger n_paths affordably.
 ///
 /// # Statistical moments
-///   bm_variance_exact         — Var[W_t] = t
-///   gbm_mean_and_variance_exact — E[X_T] and Var[X_T] vs analytic formulas
-///   ou_mean_exact             — E[X_T|X_0] vs analytic formula
-///   ou_stationary_distribution — X_T -> N(mu, sigma^2/2theta) as T->inf
+///   bm_variance_exact: Var[W_t] = t
+///   gbm_mean_and_variance_exact: E[X_T] and Var[X_T] vs analytic formulas
+///   ou_mean_exact: E[X_T|X_0] vs analytic formula
+///   ou_stationary_distribution: X_T -> N(mu, sigma^2/2theta) as T->inf
 
 use pathwise_core::process::markov::{bm, gbm, ou};
 use pathwise_core::scheme::{euler, milstein};
@@ -180,7 +180,7 @@ fn euler_weak_error_monotone() {
     let (mu, sigma, x0, t1) = (0.5_f64, 0.5_f64, 1.0_f64, 1.0_f64);
     let n_paths = 20000;
     // Coarse-to-fine: at dt=0.2, disc_err~0.030; at dt=0.025, disc_err~0.004
-    // MC noise ≈ SD[X_T]/sqrt(n) ≈ 0.97/141 ≈ 0.007 — signal visible at coarse end
+    // MC noise ≈ SD[X_T]/sqrt(n) ≈ 0.97/141 ≈ 0.007; signal visible at coarse end
     let step_counts = [5usize, 10, 20, 40];
 
     let errors: Vec<f64> = step_counts.iter()
