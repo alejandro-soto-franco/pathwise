@@ -22,7 +22,7 @@ fn splitmix64(mut x: u64) -> u64 {
 /// Row `i` is path `i`; column `j` is the state at time `t0 + j*dt`.
 ///
 /// `seed` controls the base RNG seed. Each path derives its own independent seed
-/// via splitmix64 mixing, so paths are uncorrelated regardless of seed value.
+/// via splitmix64 mixing, producing statistically independent paths regardless of seed value.
 ///
 /// Non-finite values (overflow, NaN) are recorded as `f64::NAN` and simulation
 /// continues. Check for NaN in output if numerical stability is a concern.
@@ -55,12 +55,12 @@ where
     let dt = (t1 - t0) / n_steps as f64;
     let sqrt_dt = dt.sqrt();
     let normal = Normal::new(0.0, 1.0).unwrap();
-    let base = splitmix64(seed);
+    let base_seed = splitmix64(seed);
 
     let rows: Vec<Vec<f64>> = (0..n_paths)
         .into_par_iter()
         .map(|i| {
-            let path_seed = splitmix64(base.wrapping_add(i as u64));
+            let path_seed = splitmix64(base_seed.wrapping_add(i as u64));
             let mut rng = rand::rngs::SmallRng::seed_from_u64(path_seed);
             let mut path = Vec::with_capacity(n_steps + 1);
             let mut x = x0;
