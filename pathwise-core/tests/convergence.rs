@@ -84,6 +84,10 @@ where
     let normal = Normal::new(0.0_f64, 1.0).unwrap();
     let mut total_error = 0.0_f64;
     for i in 0..n_paths {
+        // Seeding scheme for strong-error common-noise tests: use XOR of path index with constant.
+        // This differs from simulate.rs's splitmix64 scheme intentionally. Strong convergence
+        // measures relative error across scheme variants using identical Brownian paths;
+        // only consistency within this test matters, not distributional equivalence with simulate().
         let mut rng = rand::rngs::SmallRng::seed_from_u64((i as u64) ^ 0xDEAD_BEEF_CAFE);
         let dw: Vec<f64> = (0..n_steps)
             .map(|_| normal.sample(&mut rng) * sqrt_dt)
