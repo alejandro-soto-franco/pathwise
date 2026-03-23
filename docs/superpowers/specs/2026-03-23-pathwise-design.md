@@ -1,7 +1,7 @@
-# pathwise — Design Spec
+# pathwise : Design Spec
 
 **Date:** 2026-03-23
-**Status:** Draft — pending user review
+**Status:** Draft : pending user review
 **Remote:** https://github.com/alejandro-soto-franco/pathwise.git
 
 ---
@@ -62,14 +62,14 @@ pathwise/
 
 ## Core Rust Traits
 
-The composable foundation — all SDEs are built from these:
+The composable foundation : all SDEs are built from these:
 
 ```rust
 // State: clone + thread-safe + 'static. Blanket impl covers all concrete types.
 trait State: Clone + Send + Sync + 'static {}
 impl<T: Clone + Send + Sync + 'static> State for T {}
 
-// Marker traits with blanket impls — any matching closure satisfies them automatically.
+// Marker traits with blanket impls : any matching closure satisfies them automatically.
 trait Drift<S: State>: Fn(&S, f64) -> S + Send + Sync {}
 impl<S: State, F: Fn(&S, f64) -> S + Send + Sync> Drift<S> for F {}
 
@@ -119,7 +119,7 @@ Constructors for common processes (extracted/generalized from volterra + malliav
 
 ## Numerical Schemes
 
-Scheme is passed as a parameter — never baked into the model:
+Scheme is passed as a parameter : never baked into the model:
 
 | Scheme | Order | Best for |
 |---|---|---|
@@ -133,7 +133,7 @@ Scheme is passed as a parameter — never baked into the model:
 
 ## GPU Backend
 
-Path simulation is embarrassingly parallel — each path is independent.
+Path simulation is embarrassingly parallel : each path is independent.
 
 - **Primary:** CUDA via `cudarc` crate. RTX 5060 is the reference device.
 - **Fallback:** `wgpu` (Metal/Vulkan/WebGPU-compatible)
@@ -159,7 +159,7 @@ GPU is used for:
 Three inference modes:
 
 ### 1. MLE
-Applies to **Markovian SDEs only** (bm, gbm, ou, and Markovianized forms). Log-likelihood via Euler discretization of the Gaussian transition density, optimized with L-BFGS via the `argmin` crate. For non-Markovian processes (fBm, Volterra SDEs), MLE is not available — use particle filter or surface calibration instead.
+Applies to **Markovian SDEs only** (bm, gbm, ou, and Markovianized forms). Log-likelihood via Euler discretization of the Gaussian transition density, optimized with L-BFGS via the `argmin` crate. For non-Markovian processes (fBm, Volterra SDEs), MLE is not available : use particle filter or surface calibration instead.
 
 ### 2. Particle Filter (Sequential Monte Carlo)
 Online state estimation for filtering/smoothing. Resampling step GPU-accelerated. Observation model: Gaussian `p(y_t | x_t) = N(x_t, sigma_obs^2)` with user-supplied `sigma_obs`. Future versions will accept a callable likelihood `p(y | x)` for non-Gaussian observations.
@@ -171,7 +171,7 @@ Fit rough Heston or rough Bergomi to a market implied vol surface. Extracted fro
 
 ## Python API
 
-Functional and composable — no class hierarchy required for standard use:
+Functional and composable : no class hierarchy required for standard use:
 
 ```python
 import pathwise as pw
@@ -187,7 +187,7 @@ model = pw.rough_heston(H=0.1, lambda_=0.3, nu=0.3, rho=-0.7, V0=0.02)
 
 # 3. Simulate paths (GPU if available)
 paths = pw.simulate(model, scheme=pw.euler(), n_paths=50_000, n_steps=1_000, T=1.0, device="cuda")
-# paths: np.ndarray of shape (n_paths, n_steps+1) — includes t=0
+# paths: np.ndarray of shape (n_paths, n_steps+1) : includes t=0
 
 # 4. Calibrate to market data
 result = pw.calibrate(model, market_vols=vols, strikes=K, maturities=T)
@@ -275,12 +275,12 @@ Both private repos remain unchanged.
 
 ## Release Plan
 
-1. `v0.1.0` — CPU simulation only: EM + Milstein, standard processes, Python bindings
-2. `v0.2.0` — fBm + Volterra processes, Ninomiya-Victoir scheme
-3. `v0.3.0` — CUDA GPU backend
-4. `v0.4.0` — Inference: MLE + particle filter
-5. `v0.5.0` — Surface calibration (rough Heston + rough Bergomi)
-6. `v1.0.0` — Stable API, JOSS paper submission
+1. `v0.1.0` : CPU simulation only: EM + Milstein, standard processes, Python bindings
+2. `v0.2.0` : fBm + Volterra processes, Ninomiya-Victoir scheme
+3. `v0.3.0` : CUDA GPU backend
+4. `v0.4.0` : Inference: MLE + particle filter
+5. `v0.5.0` : Surface calibration (rough Heston + rough Bergomi)
+6. `v1.0.0` : Stable API, JOSS paper submission
 
 ---
 
