@@ -201,13 +201,18 @@ fn simulate_serial<'py>(
     for i in 0..n_paths {
         let path_seed = splitmix64(base_seed.wrapping_add(i as u64));
         let mut rng = rand::rngs::SmallRng::seed_from_u64(path_seed);
-        let normal = Normal::new(0.0_f64, sqrt_dt).unwrap();
+        let normal = Normal::new(0.0_f64, 1.0_f64).unwrap();
         let mut x = x0;
         result[[i, 0]] = x;
 
         for step in 0..n_steps {
+            // Once a path diverges, freeze it at NaN without calling user functions.
+            if x.is_nan() {
+                result[[i, step + 1]] = f64::NAN;
+                continue;
+            }
             let t = t0 + step as f64 * dt;
-            let dw = normal.sample(&mut rng);
+            let dw = normal.sample(&mut rng) * sqrt_dt;
 
             let f: f64 = drift_fn.call1(py, (x, t))?.extract(py)?;
             let g: f64 = diffusion_fn.call1(py, (x, t))?.extract(py)?;
