@@ -6,7 +6,7 @@ pub mod process;
 pub use process::{SDE, State, Drift, Diffusion};
 
 pub mod scheme;
-pub use scheme::{Scheme, euler};
+pub use scheme::{Scheme, euler, milstein};
 
 pub mod simulate;
 pub use simulate::simulate;
