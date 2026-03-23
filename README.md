@@ -7,7 +7,9 @@ High-performance SDE simulation toolkit: Rust core, Python API.
 ## Overview
 
 `pathwise` provides composable, high-performance SDE simulation in Python backed by a Rust
-core. Paths are generated in parallel using Rayon and returned as NumPy arrays.
+core. Paths are returned as NumPy arrays. The Rust-level API simulates paths in parallel via
+Rayon; the Python `simulate()` runs serially (one path at a time) because Python callables
+require the GIL. Built-in processes (`bm`, `gbm`, `ou`) avoid this constraint.
 
 **Key differentiator:** first-class support for non-Markovian and fractional processes
 (fractional BM, Volterra SDEs, rough volatility) is on the roadmap. No other Python SDE
@@ -18,7 +20,7 @@ library covers this gap well.
 - Euler-Maruyama and Milstein schemes
 - Built-in processes: Brownian motion, GBM, Ornstein-Uhlenbeck
 - Composable API: define any SDE from Python callables
-- Parallel CPU simulation via Rayon
+- Parallel CPU simulation via Rayon (Rust API); serial for Python callables (GIL)
 - NumPy array output
 
 ## Install
@@ -71,17 +73,17 @@ paths = pw.simulate(ou_custom, pw.euler(), n_paths=1000, n_steps=200, t1=1.0)
 
 | Function | SDE |
 |----------|-----|
-| `pw.bm()` | Standard Brownian motion: dX = dW |
-| `pw.gbm(mu, sigma)` | Geometric Brownian motion: dX = mu X dt + sigma X dW |
-| `pw.ou(theta, mu, sigma)` | Ornstein-Uhlenbeck: dX = theta(mu - X) dt + sigma dW |
-| `pw.sde(drift, diffusion)` | Custom SDE from Python callables |
+| `pw.bm()` | $dX = dW$ |
+| `pw.gbm(mu, sigma)` | $dX = \mu X \, dt + \sigma X \, dW$ |
+| `pw.ou(theta, mu, sigma)` | $dX = \theta(\mu - X) \, dt + \sigma \, dW$ |
+| `pw.sde(drift, diffusion)` | $dX = f(X,t) \, dt + g(X,t) \, dW$ |
 
 ### Schemes
 
-| Function | Order (strong) | Order (weak) |
-|----------|---------------|-------------|
-| `pw.euler()` | 0.5 | 1.0 |
-| `pw.milstein()` | 1.0 | 1.0 |
+| Function | Strong order | Weak order |
+|----------|:---:|:---:|
+| `pw.euler()` | $\tfrac{1}{2}$ | $1$ |
+| `pw.milstein()` | $1$ | $1$ |
 
 ### simulate
 
@@ -102,7 +104,7 @@ pw.simulate(
 ### Exceptions
 
 ```python
-pw.NumericalDivergence   # raised on non-finite path values
+pw.NumericalDivergence   # reserved for future use (non-finite values are stored as NaN)
 pw.ConvergenceError      # raised on inference failures (future versions)
 ```
 
@@ -110,13 +112,13 @@ pw.ConvergenceError      # raised on inference failures (future versions)
 
 The test suite verifies convergence orders against analytic benchmarks:
 
-- **Euler strong order** measured at 0.49 (expected 0.5) on GBM via common-noise regression
-- **Milstein strong order** measured at 0.98 (expected 1.0) on GBM
-- **GBM mean/variance** match E[X_T] = x0 exp(mu T) and the exact second moment formula
+- **Euler strong order** measured at 0.49 (expected $\tfrac{1}{2}$) on GBM via common-noise regression
+- **Milstein strong order** measured at 0.98 (expected $1$) on GBM
+- **GBM mean/variance** match $\mathbb{E}[X_T] = x_0 e^{\mu T}$ and the exact second moment formula
 - **OU conditional moments** match analytic formulas
-- **BM increments** pass Kolmogorov-Smirnov normality test (N(0, dt))
-- **BM quadratic variation** converges to T
-- **GBM log-normality** verified via KS test on log(X_T)
+- **BM increments** pass Kolmogorov-Smirnov normality test ($\mathcal{N}(0, \Delta t)$)
+- **BM quadratic variation** converges to $T$
+- **GBM log-normality** verified via KS test on $\log X_T$
 - **European call price** matches Black-Scholes within 1%
 
 Run the full suite:
