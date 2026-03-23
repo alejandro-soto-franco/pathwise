@@ -1,5 +1,5 @@
-use crate::process::markov::{Drift, Diffusion};
 use super::Scheme;
+use crate::process::markov::{Diffusion, Drift};
 
 pub struct EulerMaruyama;
 
@@ -17,7 +17,9 @@ impl Scheme for EulerMaruyama {
     }
 }
 
-pub fn euler() -> EulerMaruyama { EulerMaruyama }
+pub fn euler() -> EulerMaruyama {
+    EulerMaruyama
+}
 
 #[cfg(test)]
 mod tests {

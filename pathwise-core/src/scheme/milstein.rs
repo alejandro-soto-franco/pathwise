@@ -1,12 +1,14 @@
-use crate::process::markov::{Drift, Diffusion};
 use super::Scheme;
+use crate::process::markov::{Diffusion, Drift};
 
 pub struct Milstein {
     h: f64, // finite difference step for d(sigma)/dx
 }
 
 impl Milstein {
-    pub fn new(h: f64) -> Self { Self { h } }
+    pub fn new(h: f64) -> Self {
+        Self { h }
+    }
 }
 
 impl Scheme for Milstein {
@@ -27,7 +29,9 @@ impl Scheme for Milstein {
     }
 }
 
-pub fn milstein() -> Milstein { Milstein::new(1e-5) }
+pub fn milstein() -> Milstein {
+    Milstein::new(1e-5)
+}
 
 #[cfg(test)]
 mod tests {
@@ -45,7 +49,12 @@ mod tests {
         let dt = 0.01;
         let x_euler = e.step(&b.drift, &b.diffusion, x, 0.0, dt, dw);
         let x_milstein = m.step(&b.drift, &b.diffusion, x, 0.0, dt, dw);
-        assert!((x_euler - x_milstein).abs() < 1e-8, "euler={} milstein={}", x_euler, x_milstein);
+        assert!(
+            (x_euler - x_milstein).abs() < 1e-8,
+            "euler={} milstein={}",
+            x_euler,
+            x_milstein
+        );
     }
 
     #[test]
@@ -59,6 +68,9 @@ mod tests {
         let dt = 0.01;
         let x_euler = e.step(&gbm.drift, &gbm.diffusion, x, 0.0, dt, dw);
         let x_milstein = m.step(&gbm.drift, &gbm.diffusion, x, 0.0, dt, dw);
-        assert!((x_euler - x_milstein).abs() > 1e-4, "should differ by correction term");
+        assert!(
+            (x_euler - x_milstein).abs() > 1e-4,
+            "should differ by correction term"
+        );
     }
 }
