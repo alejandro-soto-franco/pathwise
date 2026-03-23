@@ -23,6 +23,9 @@ build/
 *.swp
 *.swo
 
+# Superpowers plans/specs
+docs/superpowers/
+
 # OS
 .DS_Store
 Thumbs.db
