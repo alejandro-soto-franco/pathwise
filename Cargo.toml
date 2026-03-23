@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["pathwise-core", "pathwise-py"]
+
+[workspace.dependencies]
+ndarray = "0.16"
+rayon = "1.10"
+rand = "0.9"
+rand_distr = "0.5"
+thiserror = "2"
+pyo3 = { version = "0.21", features = ["extension-module", "abi3-py310"] }
+numpy = "0.21"

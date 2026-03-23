@@ -1,0 +1,16 @@
+[package]
+name = "pathwise-py"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "pathwise"
+crate-type = ["cdylib"]
+
+[dependencies]
+pathwise-core = { path = "../pathwise-core" }
+pyo3 = { workspace = true }
+numpy = { workspace = true }
+ndarray = { workspace = true }
+rand = { workspace = true }
+rand_distr = { workspace = true }
