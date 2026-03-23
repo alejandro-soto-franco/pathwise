@@ -74,3 +74,25 @@ def test_builtin_repr():
 def test_scheme_repr():
     assert repr(pw.euler()) == "euler()"
     assert repr(pw.milstein()) == "milstein()"
+
+
+def test_simulate_seed_reproducibility():
+    """Same seed produces identical paths."""
+    r1 = pw.simulate(pw.bm(), pw.euler(), n_paths=10, n_steps=50, t1=1.0, seed=42)
+    r2 = pw.simulate(pw.bm(), pw.euler(), n_paths=10, n_steps=50, t1=1.0, seed=42)
+    np.testing.assert_array_equal(r1, r2)
+
+
+def test_simulate_different_seeds_differ():
+    """Different seeds produce different paths."""
+    r1 = pw.simulate(pw.bm(), pw.euler(), n_paths=10, n_steps=50, t1=1.0, seed=0)
+    r2 = pw.simulate(pw.bm(), pw.euler(), n_paths=10, n_steps=50, t1=1.0, seed=1)
+    assert not np.array_equal(r1, r2)
+
+
+def test_custom_sde_seed_reproducibility():
+    """Seed also works for custom (serial) SDEs."""
+    custom = pw.sde(lambda x, t: 0.0, lambda x, t: 1.0)
+    r1 = pw.simulate(custom, pw.euler(), n_paths=5, n_steps=20, t1=1.0, seed=7)
+    r2 = pw.simulate(custom, pw.euler(), n_paths=5, n_steps=20, t1=1.0, seed=7)
+    np.testing.assert_array_equal(r1, r2)

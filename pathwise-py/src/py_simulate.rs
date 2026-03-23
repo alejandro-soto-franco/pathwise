@@ -1,21 +1,29 @@
+use crate::py_error::to_py_err;
 use crate::py_process::{PySDE, SDEKind};
 use crate::py_scheme::{PyEuler, PyMilstein};
 use ndarray::Array2;
 use numpy::PyArray2;
 use pyo3::prelude::*;
-use pyo3::types::{PyCFunction, PyTuple};
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
+// Must match splitmix64 in pathwise-core/src/simulate.rs exactly.
+fn splitmix64(mut x: u64) -> u64 {
+    x = x.wrapping_add(0x9e3779b97f4a7c15);
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
+    x ^ (x >> 31)
+}
+
 /// Simulate SDE paths. Returns np.ndarray of shape (n_paths, n_steps + 1).
 ///
-/// Note: simulation is serial per path (GIL required for Python callables).
-/// For throughput-critical workloads, use built-in bm/gbm/ou processes.
+/// Built-in processes (bm, gbm, ou) run in parallel via Rayon (GIL released).
+/// Custom Python-callable SDEs run serially (GIL required per step).
 ///
 /// Non-finite values are stored as NaN; check output if stability is a concern.
 #[allow(clippy::too_many_arguments)]
 #[pyfunction]
-#[pyo3(signature = (sde, scheme, n_paths, n_steps, t1, x0=0.0, t0=0.0, device="cpu"))]
+#[pyo3(signature = (sde, scheme, n_paths, n_steps, t1, x0=0.0, t0=0.0, device="cpu", seed=0))]
 pub fn simulate<'py>(
     py: Python<'py>,
     sde: &PySDE,
@@ -26,6 +34,7 @@ pub fn simulate<'py>(
     x0: f64,
     t0: f64,
     device: &str,
+    seed: u64,
 ) -> PyResult<Bound<'py, PyArray2<f64>>> {
     if device != "cpu" {
         return Err(pyo3::exceptions::PyNotImplementedError::new_err(
@@ -48,54 +57,150 @@ pub fn simulate<'py>(
         ));
     }
 
-    // Extract drift and diffusion as Python callables, converting built-ins on the fly.
-    // Task 3 will replace this block with GIL-free parallel dispatch for built-in variants.
-    let (drift_fn, diffusion_fn): (PyObject, PyObject) = match &sde.kind {
+    match &sde.kind {
         SDEKind::Bm => {
-            let d = PyCFunction::new_closure_bound(py, None, None, |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                Ok(0.0)
-            })?;
-            let g = PyCFunction::new_closure_bound(py, None, None, |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                Ok(1.0)
-            })?;
-            (d.into_any().unbind(), g.into_any().unbind())
+            let sde_rust = pathwise_core::process::markov::bm();
+            let result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
         }
         SDEKind::Gbm { mu, sigma } => {
-            let mu = *mu;
-            let sigma = *sigma;
-            let d = PyCFunction::new_closure_bound(py, None, None, move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                let x: f64 = args.get_item(0)?.extract()?;
-                Ok(mu * x)
-            })?;
-            let g = PyCFunction::new_closure_bound(py, None, None, move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                let x: f64 = args.get_item(0)?.extract()?;
-                Ok(sigma * x)
-            })?;
-            (d.into_any().unbind(), g.into_any().unbind())
+            let sde_rust = pathwise_core::process::markov::gbm(*mu, *sigma);
+            let result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
         }
         SDEKind::Ou { theta, mu, sigma } => {
-            let (theta, mu, sigma) = (*theta, *mu, *sigma);
-            let d = PyCFunction::new_closure_bound(py, None, None, move |args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                let x: f64 = args.get_item(0)?.extract()?;
-                Ok(theta * (mu - x))
-            })?;
-            let g = PyCFunction::new_closure_bound(py, None, None, move |_args: &Bound<'_, PyTuple>, _kwargs| -> PyResult<f64> {
-                Ok(sigma)
-            })?;
-            (d.into_any().unbind(), g.into_any().unbind())
+            let sde_rust = pathwise_core::process::markov::ou(*theta, *mu, *sigma);
+            let result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
         }
         SDEKind::Custom { drift, diffusion } => {
-            (drift.clone_ref(py), diffusion.clone_ref(py))
+            simulate_serial(
+                py,
+                drift,
+                diffusion,
+                use_milstein,
+                x0,
+                t0,
+                t1,
+                n_paths,
+                n_steps,
+                seed,
+            )
         }
-    };
+    }
+}
 
+/// GIL-bound serial simulation for custom Python-callable SDEs.
+#[allow(clippy::too_many_arguments)]
+fn simulate_serial<'py>(
+    py: Python<'py>,
+    drift_fn: &PyObject,
+    diffusion_fn: &PyObject,
+    use_milstein: bool,
+    x0: f64,
+    t0: f64,
+    t1: f64,
+    n_paths: usize,
+    n_steps: usize,
+    seed: u64,
+) -> PyResult<Bound<'py, PyArray2<f64>>> {
     let dt = (t1 - t0) / n_steps as f64;
     let sqrt_dt = dt.sqrt();
+    // central-difference step for dg/dx in Milstein correction
     let h = 1e-5_f64;
+    let base_seed = splitmix64(seed);
     let mut result = Array2::<f64>::zeros((n_paths, n_steps + 1));
 
     for i in 0..n_paths {
-        let mut rng = rand::rngs::SmallRng::seed_from_u64(i as u64);
+        let path_seed = splitmix64(base_seed.wrapping_add(i as u64));
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(path_seed);
         let normal = Normal::new(0.0_f64, sqrt_dt).unwrap();
         let mut x = x0;
         result[[i, 0]] = x;
