@@ -1,4 +1,4 @@
-use crate::process::markov::{Drift, Diffusion};
+use crate::process::markov::{Diffusion, Drift};
 
 /// One-step advance of a scalar SDE.
 pub trait Scheme: Send + Sync {
@@ -15,5 +15,5 @@ pub trait Scheme: Send + Sync {
 
 pub mod euler;
 pub mod milstein;
-pub use euler::{EulerMaruyama, euler};
-pub use milstein::{Milstein, milstein};
+pub use euler::{euler, EulerMaruyama};
+pub use milstein::{milstein, Milstein};

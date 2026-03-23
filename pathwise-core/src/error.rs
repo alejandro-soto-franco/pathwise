@@ -21,7 +21,10 @@ mod tests {
         let e = PathwiseError::InvalidParameters("H must be in (0,1)".into());
         assert!(e.to_string().contains("H must be in (0,1)"));
 
-        let e = PathwiseError::NumericalDivergence { step: 42, value: f64::NAN };
+        let e = PathwiseError::NumericalDivergence {
+            step: 42,
+            value: f64::NAN,
+        };
         assert!(e.to_string().contains("42"));
 
         let e = PathwiseError::ConvergenceFailure("max iterations reached".into());
