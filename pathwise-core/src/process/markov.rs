@@ -29,6 +29,27 @@ impl<S: State, D: Drift<S>, G: Diffusion<S>> SDE<S, D, G> {
     }
 }
 
+/// Standard Brownian motion: dX = dW
+pub fn bm() -> SDE<f64, impl Drift<f64>, impl Diffusion<f64>> {
+    SDE::new(|_x: &f64, _t: f64| 0.0_f64, |_x: &f64, _t: f64| 1.0_f64)
+}
+
+/// Geometric Brownian motion: dX = mu*X dt + sigma*X dW
+pub fn gbm(mu: f64, sigma: f64) -> SDE<f64, impl Drift<f64>, impl Diffusion<f64>> {
+    SDE::new(
+        move |x: &f64, _t: f64| mu * x,
+        move |x: &f64, _t: f64| sigma * x,
+    )
+}
+
+/// Ornstein-Uhlenbeck: dX = theta*(mu - X) dt + sigma dW
+pub fn ou(theta: f64, mu: f64, sigma: f64) -> SDE<f64, impl Drift<f64>, impl Diffusion<f64>> {
+    SDE::new(
+        move |x: &f64, _t: f64| theta * (mu - x),
+        move |_x: &f64, _t: f64| sigma,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,5 +72,26 @@ mod tests {
             |_x: &f64, _t: f64| 1.0_f64,
         );
         assert!((sde.eval_drift(&1.0, 0.0) - (-0.7)).abs() < 1e-12);
+    }
+
+    #[test]
+    fn bm_has_zero_drift_unit_diffusion() {
+        let b = bm();
+        assert_eq!(b.eval_drift(&1.5, 0.5), 0.0);
+        assert_eq!(b.eval_diffusion(&1.5, 0.5), 1.0);
+    }
+
+    #[test]
+    fn gbm_drift_and_diffusion() {
+        let g = gbm(0.05, 0.2);
+        assert!((g.eval_drift(&2.0, 0.0) - 0.1).abs() < 1e-12);
+        assert!((g.eval_diffusion(&2.0, 0.0) - 0.4).abs() < 1e-12);
+    }
+
+    #[test]
+    fn ou_drift_and_diffusion() {
+        let o = ou(1.0, 0.0, 0.5);
+        assert!((o.eval_drift(&1.0, 0.0) - (-1.0)).abs() < 1e-12);
+        assert!((o.eval_diffusion(&1.0, 0.0) - 0.5).abs() < 1e-12);
     }
 }
