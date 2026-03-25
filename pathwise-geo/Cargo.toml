@@ -1,0 +1,17 @@
+[package]
+name = "pathwise-geo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pathwise-core = { path = "../pathwise-core" }
+cartan-core = { path = "../../cartan/cartan-core", version = "0.1" }
+cartan-manifolds = { path = "../../cartan/cartan-manifolds", version = "0.1", default-features = false, features = ["std"] }
+nalgebra = { version = "0.33", default-features = false, features = ["std"] }
+rayon = "1"
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng"] }
+rand_distr = { version = "0.5" }
+ndarray = "0.15"
+
+[dev-dependencies]
+rand = { version = "0.9", features = ["std_rng"] }
