@@ -231,9 +231,9 @@ pub fn simulate<'py>(
             Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
         }
         SDEKind::CorrOu { .. } if use_sri => {
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            Err(pyo3::exceptions::PyValueError::new_err(
                 "SRI requires scalar or diagonal noise; use milstein() or euler() for CorrOu",
-            ));
+            ))
         }
         SDEKind::CorrOu { theta, mu, sigma_flat, n } => {
             let dim = *n;
@@ -243,8 +243,12 @@ pub fn simulate<'py>(
                 ));
             }
             use nalgebra::{Matrix2, SVector};
+            // sigma_flat was length-checked (n*n == 4) in corr_ou() constructor; from_row_slice is safe.
             let sigma = Matrix2::from_row_slice(sigma_flat);
             let mu_arr = SVector::<f64, 2>::from([mu[0], mu[1]]);
+            // Both CorrOU components start at the scalar x0. Per-dimension initial conditions are not
+            // currently exposed in the Python API; callers needing different start values should use
+            // the Rust API directly.
             let x0_nd = SVector::<f64, 2>::from([x0, x0]);
             let sde_rust = pathwise_core::corr_ou::<2>(*theta, mu_arr, sigma)
                 .map_err(to_py_err)?;
