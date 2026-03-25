@@ -1,11 +1,11 @@
 [package]
 name = "pathwise-geo"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-keywords.workspace = true
-categories.workspace = true
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/alejandro-soto-franco/pathwise"
+keywords = ["sde", "simulation", "stochastic", "finance", "riemannian"]
+categories = ["mathematics", "science", "simulation"]
 description = "Riemannian manifold SDE simulation (geodesic Euler/Milstein/SRI) on S^n, SO(n), SPD(n) via the cartan geometry library"
 documentation = "https://docs.rs/pathwise-geo"
 readme = "../README.md"
@@ -22,3 +22,7 @@ ndarray = "0.15"
 
 [dev-dependencies]
 rand = { version = "0.9", features = ["std_rng"] }
+
+# Declare pathwise-geo as a standalone workspace so that Cargo does not try to
+# pull it into the parent pathwise workspace (which lacks the cartan siblings).
+[workspace]

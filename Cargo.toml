@@ -1,6 +1,11 @@
 [workspace]
 resolver = "2"
-members = ["pathwise-core", "pathwise-geo", "pathwise-py"]
+members = ["pathwise-core", "pathwise-py"]
+# pathwise-geo is a standalone crate (depends on cartan via local path) and is
+# published separately. It is excluded from the workspace so that `cargo metadata`
+# on CI (which only has this repo, not cartan) does not fail trying to resolve
+# ../../cartan/cartan-core. Develop pathwise-geo with `cargo build/test` from
+# pathwise-geo/ or with cartan checked out as a sibling directory.
 
 [workspace.package]
 version = "0.2.0"
