@@ -35,6 +35,10 @@ impl<const N: usize> State for nalgebra::SVector<f64, N> {
 }
 
 /// Types that can sample a Brownian increment for a given dt.
+///
+/// # Object safety
+/// This trait is not object-safe because `sample` is generic over `R: Rng`.
+/// All uses are monomorphic — `dyn NoiseIncrement` will not compile.
 pub trait NoiseIncrement: Clone + Send + Sync + 'static {
     fn sample<R: Rng>(rng: &mut R, dt: f64) -> Increment<Self>;
 }
@@ -77,6 +81,11 @@ impl<const M: usize> NoiseIncrement for nalgebra::SVector<f64, M> {
 /// `Diffusion<SVector<N>, SVector<N>>` by element-wise (Hadamard) product.
 ///
 /// Full-matrix processes (Heston, CorrOU) provide concrete struct impls.
+///
+/// # Calling convention
+/// Scalar diffusions (`B = f64`) receive `x` by value because `f64: Copy`.
+/// Vector diffusions (`B = SVector<f64, N>`) receive `x` by reference.
+/// Concrete struct impls (e.g. `HestonDiffusion`) use whichever is appropriate for their state type.
 pub trait Diffusion<S: State, B: NoiseIncrement>: Send + Sync {
     fn apply(&self, x: &S, t: f64, dw: &B) -> S;
 }
