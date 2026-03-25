@@ -93,7 +93,7 @@ pub fn simulate<'py>(
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::Gbm { mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::gbm(*mu, *sigma);
@@ -126,7 +126,7 @@ pub fn simulate<'py>(
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::Ou { theta, mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::ou(*theta, *mu, *sigma);
@@ -159,7 +159,7 @@ pub fn simulate<'py>(
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::Cir { kappa, theta, sigma } => {
             // Feller condition already validated in cir() constructor; unwrap is safe here.
@@ -198,7 +198,7 @@ pub fn simulate<'py>(
             // may still go slightly negative under Euler. Clip post-step to enforce
             // the non-negativity constraint that holds in continuous time.
             result.mapv_inplace(|v| if v < 0.0 { 0.0 } else { v });
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::Heston { mu, kappa, theta, xi, rho } => {
             if use_sri {
@@ -229,7 +229,7 @@ pub fn simulate<'py>(
                 })
             }
             .map_err(to_py_err)?;
-            Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(PyArray3::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::CorrOu { .. } if use_sri => {
             Err(pyo3::exceptions::PyValueError::new_err(
@@ -273,7 +273,7 @@ pub fn simulate<'py>(
                 })
             }
             .map_err(to_py_err)?;
-            Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
+            Ok(PyArray3::from_owned_array(py, result).into_any().unbind())
         }
         SDEKind::Custom { drift, diffusion } => {
             if use_sri {
@@ -354,5 +354,5 @@ fn simulate_serial<'py>(
         }
     }
 
-    Ok(numpy::PyArray2::from_owned_array_bound(py, result))
+    Ok(numpy::PyArray2::from_owned_array(py, result))
 }
