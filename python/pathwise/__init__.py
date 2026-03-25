@@ -5,7 +5,7 @@ from pathwise._pathwise import (
     simulate,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "NumericalDivergence", "ConvergenceError",
     "SDE", "bm", "gbm", "ou", "cir", "heston", "sde",

@@ -4,12 +4,23 @@ build-backend = "maturin"
 
 [project]
 name = "pathwise"
-version = "0.1.0"
+version = "0.2.0"
+description = "High-performance SDE simulation: Rust core, Python API"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Alejandro Soto Franco" }]
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Mathematics",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alejandro-soto-franco/pathwise"
+Repository = "https://github.com/alejandro-soto-franco/pathwise"
+Issues = "https://github.com/alejandro-soto-franco/pathwise/issues"
 
 [tool.maturin]
 python-source = "python"
