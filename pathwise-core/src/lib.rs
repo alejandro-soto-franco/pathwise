@@ -29,10 +29,10 @@ pub mod error;
 pub use error::PathwiseError;
 
 pub mod process;
-pub use process::{bm, cir, gbm, ou, Drift, SDE};
+pub use process::{bm, cir, gbm, heston, ou, Drift, HestonDiffusion, NdSDE, SDE};
 
 pub mod scheme;
 pub use scheme::{euler, milstein, sri, Scheme, Sri};
 
 pub mod simulate;
-pub use simulate::simulate;
+pub use simulate::{simulate, simulate_nd};
