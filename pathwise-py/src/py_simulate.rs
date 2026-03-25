@@ -7,7 +7,8 @@ use pyo3::prelude::*;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
-// Must match splitmix64 in pathwise-core/src/simulate.rs exactly.
+// Same derivation as pathwise_core::rng::splitmix64 — must stay in sync.
+// Local copy because pathwise-core::rng is a private module.
 fn splitmix64(mut x: u64) -> u64 {
     x = x.wrapping_add(0x9e3779b97f4a7c15);
     x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);

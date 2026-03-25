@@ -4,15 +4,9 @@ use rayon::prelude::*;
 
 use crate::error::PathwiseError;
 use crate::process::markov::Drift;
+use crate::rng::splitmix64;
 use crate::scheme::Scheme;
 use crate::state::{Diffusion, NoiseIncrement};
-
-fn splitmix64(mut x: u64) -> u64 {
-    x = x.wrapping_add(0x9e3779b97f4a7c15);
-    x = (x ^ (x >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
-    x = (x ^ (x >> 27)).wrapping_mul(0x94d049bb133111eb);
-    x ^ (x >> 31)
-}
 
 /// Simulate `n_paths` paths of a scalar SDE from `t0` to `t1` with `n_steps` steps.
 ///
