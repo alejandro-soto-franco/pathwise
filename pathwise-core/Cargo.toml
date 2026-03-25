@@ -1,7 +1,14 @@
 [package]
 name = "pathwise-core"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "High-performance SDE simulation engine: Euler, Milstein, SRI (strong-order 1.5), CIR, Heston, correlated OU"
+documentation = "https://docs.rs/pathwise-core"
+readme = "../README.md"
 
 [dependencies]
 ndarray = { workspace = true }

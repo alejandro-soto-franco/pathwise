@@ -4,6 +4,7 @@ High-performance SDE simulation toolkit: Rust core, Python API.
 
 [![CI](https://github.com/alejandro-soto-franco/pathwise/actions/workflows/ci.yml/badge.svg)](https://github.com/alejandro-soto-franco/pathwise/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/pathwise-core.svg)](https://crates.io/crates/pathwise-core)
+[![docs.rs](https://docs.rs/pathwise-core/badge.svg)](https://docs.rs/pathwise-core)
 [![PyPI](https://img.shields.io/pypi/v/pathwise-sde.svg)](https://pypi.org/project/pathwise-sde/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
