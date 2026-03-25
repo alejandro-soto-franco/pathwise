@@ -40,6 +40,12 @@ pub(crate) enum SDEKind {
         xi: f64,
         rho: f64,
     },
+    CorrOu {
+        theta: f64,
+        mu: Vec<f64>,
+        sigma_flat: Vec<f64>,
+        n: usize,
+    },
     Custom {
         drift: PyObject,
         diffusion: PyObject,
@@ -62,6 +68,9 @@ impl std::fmt::Debug for SDEKind {
             }
             SDEKind::Heston { mu, kappa, theta, xi, rho } => {
                 write!(f, "SDEKind::Heston {{ mu: {mu}, kappa: {kappa}, theta: {theta}, xi: {xi}, rho: {rho} }}")
+            }
+            SDEKind::CorrOu { theta, mu, n, .. } => {
+                write!(f, "SDEKind::CorrOu {{ theta: {theta}, n: {n}, mu: {mu:?} }}")
             }
             SDEKind::Custom { .. } => write!(f, "SDEKind::Custom(<PyObject>)"),
         }
@@ -115,6 +124,9 @@ impl PySDE {
                     fmt_f64(*xi),
                     fmt_f64(*rho)
                 )
+            }
+            SDEKind::CorrOu { theta, mu, n, .. } => {
+                format!("SDE(corr_ou, theta={}, n={}, mu={:?})", fmt_f64(*theta), n, mu)
             }
             SDEKind::Custom { .. } => "SDE(custom)".to_string(),
         }
@@ -175,4 +187,22 @@ pub fn heston(mu: f64, kappa: f64, theta: f64, xi: f64, rho: f64) -> PySDE {
     PySDE {
         kind: SDEKind::Heston { mu, kappa, theta, xi, rho },
     }
+}
+
+/// Correlated Ornstein-Uhlenbeck: dX = theta*(mu - X) dt + Sigma^(1/2) dW
+///
+/// `mu` must be a list of length N; `sigma_flat` must be a flattened N×N covariance matrix
+/// (row-major, length N*N).
+#[pyfunction]
+pub fn corr_ou(theta: f64, mu: Vec<f64>, sigma_flat: Vec<f64>) -> PyResult<PySDE> {
+    let n = mu.len();
+    if sigma_flat.len() != n * n {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "sigma_flat must have {} elements for {}x{} matrix, got {}",
+            n * n, n, n, sigma_flat.len()
+        )));
+    }
+    Ok(PySDE {
+        kind: SDEKind::CorrOu { theta, mu, sigma_flat, n },
+    })
 }
