@@ -1,6 +1,6 @@
 // pathwise-core/src/state.rs
-use std::ops::{Add, Mul};
 use rand::Rng;
+use std::ops::{Add, Mul};
 
 /// Both Brownian increments for one time step.
 /// `dw` = dW = z1 * sqrt(dt)
@@ -19,19 +19,21 @@ pub struct Increment<B: Clone> {
 /// Algebraic requirements for SDE state types.
 /// `f64` and `nalgebra::SVector<f64, N>` both satisfy this automatically.
 pub trait State:
-    Clone + Send + Sync + 'static
-    + Add<Output = Self>
-    + Mul<f64, Output = Self>
+    Clone + Send + Sync + 'static + Add<Output = Self> + Mul<f64, Output = Self>
 {
     fn zero() -> Self;
 }
 
 impl State for f64 {
-    fn zero() -> Self { 0.0 }
+    fn zero() -> Self {
+        0.0
+    }
 }
 
 impl<const N: usize> State for nalgebra::SVector<f64, N> {
-    fn zero() -> Self { nalgebra::SVector::zeros() }
+    fn zero() -> Self {
+        nalgebra::SVector::zeros()
+    }
 }
 
 /// Types that can sample a Brownian increment for a given dt.
@@ -134,15 +136,28 @@ mod tests {
         let var_dz: f64 = dzs.iter().map(|x| x * x).sum::<f64>() / n as f64;
         let cov: f64 = dws.iter().zip(&dzs).map(|(w, z)| w * z).sum::<f64>() / n as f64;
         // Var[dW] = dt = 0.01
-        assert!((var_dw - dt).abs() / dt < 0.02, "Var[dW]={:.6} expected {:.6}", var_dw, dt);
+        assert!(
+            (var_dw - dt).abs() / dt < 0.02,
+            "Var[dW]={:.6} expected {:.6}",
+            var_dw,
+            dt
+        );
         // Var[dZ] = dt^3/3
         let expected_var_dz = dt.powi(3) / 3.0;
-        assert!((var_dz - expected_var_dz).abs() / expected_var_dz < 0.03,
-            "Var[dZ]={:.8} expected {:.8}", var_dz, expected_var_dz);
+        assert!(
+            (var_dz - expected_var_dz).abs() / expected_var_dz < 0.03,
+            "Var[dZ]={:.8} expected {:.8}",
+            var_dz,
+            expected_var_dz
+        );
         // Cov(dW,dZ) = dt^2/2
         let expected_cov = dt.powi(2) / 2.0;
-        assert!((cov - expected_cov).abs() / expected_cov < 0.02,
-            "Cov(dW,dZ)={:.8} expected {:.8}", cov, expected_cov);
+        assert!(
+            (cov - expected_cov).abs() / expected_cov < 0.02,
+            "Cov(dW,dZ)={:.8} expected {:.8}",
+            cov,
+            expected_cov
+        );
     }
 
     #[test]

@@ -32,7 +32,9 @@ where
     SC: Scheme<f64, Noise = f64>,
 {
     if n_paths == 0 || n_steps == 0 {
-        return Err(PathwiseError::InvalidParameters("n_paths and n_steps must be > 0".into()));
+        return Err(PathwiseError::InvalidParameters(
+            "n_paths and n_steps must be > 0".into(),
+        ));
     }
     if t1 <= t0 {
         return Err(PathwiseError::InvalidParameters("t1 must be > t0".into()));
@@ -53,7 +55,9 @@ where
                 let t = t0 + step as f64 * dt;
                 let inc = <f64 as NoiseIncrement>::sample(&mut rng, dt);
                 x = scheme.step(drift, diffusion, &x, t, dt, &inc);
-                if !x.is_finite() { x = f64::NAN; }
+                if !x.is_finite() {
+                    x = f64::NAN;
+                }
                 path.push(x);
             }
             path
@@ -92,7 +96,9 @@ where
     SC: Scheme<nalgebra::SVector<f64, N>, Noise = nalgebra::SVector<f64, N>>,
 {
     if n_paths == 0 || n_steps == 0 {
-        return Err(PathwiseError::InvalidParameters("n_paths and n_steps must be > 0".into()));
+        return Err(PathwiseError::InvalidParameters(
+            "n_paths and n_steps must be > 0".into(),
+        ));
     }
     if t1 <= t0 {
         return Err(PathwiseError::InvalidParameters("t1 must be > t0".into()));

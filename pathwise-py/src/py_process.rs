@@ -63,14 +63,30 @@ impl std::fmt::Debug for SDEKind {
                     "SDEKind::Ou {{ theta: {theta}, mu: {mu}, sigma: {sigma} }}"
                 )
             }
-            SDEKind::Cir { kappa, theta, sigma } => {
-                write!(f, "SDEKind::Cir {{ kappa: {kappa}, theta: {theta}, sigma: {sigma} }}")
+            SDEKind::Cir {
+                kappa,
+                theta,
+                sigma,
+            } => {
+                write!(
+                    f,
+                    "SDEKind::Cir {{ kappa: {kappa}, theta: {theta}, sigma: {sigma} }}"
+                )
             }
-            SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+            SDEKind::Heston {
+                mu,
+                kappa,
+                theta,
+                xi,
+                rho,
+            } => {
                 write!(f, "SDEKind::Heston {{ mu: {mu}, kappa: {kappa}, theta: {theta}, xi: {xi}, rho: {rho} }}")
             }
             SDEKind::CorrOu { theta, mu, n, .. } => {
-                write!(f, "SDEKind::CorrOu {{ theta: {theta}, n: {n}, mu: {mu:?} }}")
+                write!(
+                    f,
+                    "SDEKind::CorrOu {{ theta: {theta}, n: {n}, mu: {mu:?} }}"
+                )
             }
             SDEKind::Custom { .. } => write!(f, "SDEKind::Custom(<PyObject>)"),
         }
@@ -107,7 +123,11 @@ impl PySDE {
                     fmt_f64(*sigma)
                 )
             }
-            SDEKind::Cir { kappa, theta, sigma } => {
+            SDEKind::Cir {
+                kappa,
+                theta,
+                sigma,
+            } => {
                 format!(
                     "SDE(cir, kappa={}, theta={}, sigma={})",
                     fmt_f64(*kappa),
@@ -115,7 +135,13 @@ impl PySDE {
                     fmt_f64(*sigma)
                 )
             }
-            SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+            SDEKind::Heston {
+                mu,
+                kappa,
+                theta,
+                xi,
+                rho,
+            } => {
                 format!(
                     "SDE(heston, mu={}, kappa={}, theta={}, xi={}, rho={})",
                     fmt_f64(*mu),
@@ -126,7 +152,12 @@ impl PySDE {
                 )
             }
             SDEKind::CorrOu { theta, mu, n, .. } => {
-                format!("SDE(corr_ou, theta={}, n={}, mu={:?})", fmt_f64(*theta), n, mu)
+                format!(
+                    "SDE(corr_ou, theta={}, n={}, mu={:?})",
+                    fmt_f64(*theta),
+                    n,
+                    mu
+                )
             }
             SDEKind::Custom { .. } => "SDE(custom)".to_string(),
         }
@@ -170,10 +201,13 @@ pub fn sde(_py: Python<'_>, drift: PyObject, diffusion: PyObject) -> PySDE {
 #[pyfunction]
 pub fn cir(kappa: f64, theta: f64, sigma: f64) -> PyResult<PySDE> {
     // Delegate to pathwise_core which checks the Feller condition.
-    pathwise_core::cir(kappa, theta, sigma)
-        .map_err(crate::py_error::to_py_err)?;
+    pathwise_core::cir(kappa, theta, sigma).map_err(crate::py_error::to_py_err)?;
     Ok(PySDE {
-        kind: SDEKind::Cir { kappa, theta, sigma },
+        kind: SDEKind::Cir {
+            kappa,
+            theta,
+            sigma,
+        },
     })
 }
 
@@ -185,7 +219,13 @@ pub fn cir(kappa: f64, theta: f64, sigma: f64) -> PyResult<PySDE> {
 #[pyfunction]
 pub fn heston(mu: f64, kappa: f64, theta: f64, xi: f64, rho: f64) -> PySDE {
     PySDE {
-        kind: SDEKind::Heston { mu, kappa, theta, xi, rho },
+        kind: SDEKind::Heston {
+            mu,
+            kappa,
+            theta,
+            xi,
+            rho,
+        },
     }
 }
 
@@ -199,10 +239,18 @@ pub fn corr_ou(theta: f64, mu: Vec<f64>, sigma_flat: Vec<f64>) -> PyResult<PySDE
     if sigma_flat.len() != n * n {
         return Err(pyo3::exceptions::PyValueError::new_err(format!(
             "sigma_flat must have {} elements for {}x{} matrix, got {}",
-            n * n, n, n, sigma_flat.len()
+            n * n,
+            n,
+            n,
+            sigma_flat.len()
         )));
     }
     Ok(PySDE {
-        kind: SDEKind::CorrOu { theta, mu, sigma_flat, n },
+        kind: SDEKind::CorrOu {
+            theta,
+            mu,
+            sigma_flat,
+            n,
+        },
     })
 }

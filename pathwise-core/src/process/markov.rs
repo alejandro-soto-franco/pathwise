@@ -1,6 +1,6 @@
-use std::marker::PhantomData;
-use nalgebra::SVector;
 use crate::state::{Diffusion, NoiseIncrement, State};
+use nalgebra::SVector;
+use std::marker::PhantomData;
 
 pub trait Drift<S: State>: Fn(&S, f64) -> S + Send + Sync {}
 impl<S: State, F: Fn(&S, f64) -> S + Send + Sync> Drift<S> for F {}
@@ -103,11 +103,15 @@ pub fn cir(
     kappa: f64,
     theta: f64,
     sigma: f64,
-) -> Result<SDE<f64, impl Drift<f64>, impl Fn(f64, f64) -> f64 + Send + Sync>, crate::error::PathwiseError> {
+) -> Result<
+    SDE<f64, impl Drift<f64>, impl Fn(f64, f64) -> f64 + Send + Sync>,
+    crate::error::PathwiseError,
+> {
     if kappa <= 0.0 || theta <= 0.0 || sigma <= 0.0 {
-        return Err(crate::error::PathwiseError::InvalidParameters(
-            format!("CIR requires kappa, theta, sigma > 0; got kappa={}, theta={}, sigma={}", kappa, theta, sigma)
-        ));
+        return Err(crate::error::PathwiseError::InvalidParameters(format!(
+            "CIR requires kappa, theta, sigma > 0; got kappa={}, theta={}, sigma={}",
+            kappa, theta, sigma
+        )));
     }
     if 2.0 * kappa * theta <= sigma * sigma {
         return Err(crate::error::PathwiseError::FellerViolation(
@@ -148,18 +152,22 @@ where
 pub struct HestonDiffusion {
     xi: f64,
     rho: f64,
-    rho_perp: f64,  // sqrt(1 - rho^2)
+    rho_perp: f64, // sqrt(1 - rho^2)
 }
 
 impl HestonDiffusion {
     pub fn new(xi: f64, rho: f64) -> Self {
-        Self { xi, rho, rho_perp: (1.0 - rho * rho).sqrt() }
+        Self {
+            xi,
+            rho,
+            rho_perp: (1.0 - rho * rho).sqrt(),
+        }
     }
 }
 
 impl Diffusion<SVector<f64, 2>, SVector<f64, 2>> for HestonDiffusion {
     fn apply(&self, x: &SVector<f64, 2>, _t: f64, dw: &SVector<f64, 2>) -> SVector<f64, 2> {
-        let v = x[1].max(0.0);  // full truncation
+        let v = x[1].max(0.0); // full truncation
         let sv = v.sqrt();
         SVector::from([
             sv * dw[0],
@@ -202,8 +210,15 @@ pub struct CorrOuDiffusion<const N: usize> {
     l: nalgebra::SMatrix<f64, N, N>,
 }
 
-impl<const N: usize> crate::state::Diffusion<nalgebra::SVector<f64, N>, nalgebra::SVector<f64, N>> for CorrOuDiffusion<N> {
-    fn apply(&self, _x: &nalgebra::SVector<f64, N>, _t: f64, dw: &nalgebra::SVector<f64, N>) -> nalgebra::SVector<f64, N> {
+impl<const N: usize> crate::state::Diffusion<nalgebra::SVector<f64, N>, nalgebra::SVector<f64, N>>
+    for CorrOuDiffusion<N>
+{
+    fn apply(
+        &self,
+        _x: &nalgebra::SVector<f64, N>,
+        _t: f64,
+        dw: &nalgebra::SVector<f64, N>,
+    ) -> nalgebra::SVector<f64, N> {
         self.l * dw
     }
 }
@@ -218,12 +233,16 @@ pub fn corr_ou<const N: usize>(
     mu: nalgebra::SVector<f64, N>,
     sigma_mat: nalgebra::SMatrix<f64, N, N>,
 ) -> Result<
-    NdSDE<N, impl Fn(&nalgebra::SVector<f64, N>, f64) -> nalgebra::SVector<f64, N> + Send + Sync, CorrOuDiffusion<N>>,
+    NdSDE<
+        N,
+        impl Fn(&nalgebra::SVector<f64, N>, f64) -> nalgebra::SVector<f64, N> + Send + Sync,
+        CorrOuDiffusion<N>,
+    >,
     crate::error::PathwiseError,
 > {
     let chol = nalgebra::Cholesky::new(sigma_mat).ok_or_else(|| {
         crate::error::PathwiseError::DimensionMismatch(
-            "sigma_mat is not positive-definite (Cholesky failed)".into()
+            "sigma_mat is not positive-definite (Cholesky failed)".into(),
         )
     })?;
     let l = chol.l();
@@ -283,7 +302,10 @@ mod tests {
 
     #[test]
     fn increment_roundtrip() {
-        let inc = Increment { dw: 0.3_f64, dz: 0.0_f64 };
+        let inc = Increment {
+            dw: 0.3_f64,
+            dz: 0.0_f64,
+        };
         assert!((inc.dw - 0.3).abs() < 1e-12);
     }
 }

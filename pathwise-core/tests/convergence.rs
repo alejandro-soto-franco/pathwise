@@ -483,13 +483,15 @@ fn strong_error_generic<SC: pathwise_core::scheme::Scheme<f64, Noise = f64>>(
         let mut rng = rand::rngs::SmallRng::seed_from_u64((i as u64) ^ 0xDEAD_BEEF_CAFE);
         // Generate (dW, dZ) pairs with proper correlation from a single RNG stream.
         // z1 -> dW, z2 -> dZ (correlated via the iterated-integral formula).
-        let incs: Vec<pathwise_core::state::Increment<f64>> = (0..n_steps).map(|_| {
-            let z1 = normal.sample(&mut rng);
-            let z2 = normal.sample(&mut rng);
-            let dw = z1 * sqrt_dt;
-            let dz = (dt / 2.0) * dw - (dt.powi(3) / 12.0).sqrt() * z2;
-            pathwise_core::state::Increment { dw, dz }
-        }).collect();
+        let incs: Vec<pathwise_core::state::Increment<f64>> = (0..n_steps)
+            .map(|_| {
+                let z1 = normal.sample(&mut rng);
+                let z2 = normal.sample(&mut rng);
+                let dw = z1 * sqrt_dt;
+                let dz = (dt / 2.0) * dw - (dt.powi(3) / 12.0).sqrt() * z2;
+                pathwise_core::state::Increment { dw, dz }
+            })
+            .collect();
         // Exact GBM terminal value using the same Brownian path W_T = sum(dW_i).
         let w_t: f64 = incs.iter().map(|inc| inc.dw).sum();
         let x_exact = x0 * ((mu - 0.5 * sigma * sigma) * t1 + sigma * w_t).exp();
@@ -497,7 +499,10 @@ fn strong_error_generic<SC: pathwise_core::scheme::Scheme<f64, Noise = f64>>(
         let mut x = x0;
         for (j, inc) in incs.iter().enumerate() {
             x = scheme.step(&g.drift, &g.diffusion, &x, j as f64 * dt, dt, inc);
-            if !x.is_finite() { x = f64::NAN; break; }
+            if !x.is_finite() {
+                x = f64::NAN;
+                break;
+            }
         }
         total_error += (x - x_exact).abs();
     }
@@ -512,16 +517,20 @@ fn sri_strong_order_on_gbm() {
     let n_paths = 8000;
     let step_counts = [25usize, 50, 100, 200, 400];
     let dts: Vec<f64> = step_counts.iter().map(|&n| t1 / n as f64).collect();
-    let errors: Vec<f64> = step_counts.iter().map(|&n_steps| {
-        strong_error_generic(
-            &sri(),
-            n_steps, n_paths, mu, sigma, x0, t1,
-        )
-    }).collect();
+    let errors: Vec<f64> = step_counts
+        .iter()
+        .map(|&n_steps| strong_error_generic(&sri(), n_steps, n_paths, mu, sigma, x0, t1))
+        .collect();
     let order = convergence_order(&dts, &errors);
-    println!("SRI strong order = {:.4}  (expected ~1.5, band [1.2, 1.8])", order);
-    assert!(order > 1.2 && order < 1.8,
-        "SRI strong order = {:.4}, expected in [1.2, 1.8]", order);
+    println!(
+        "SRI strong order = {:.4}  (expected ~1.5, band [1.2, 1.8])",
+        order
+    );
+    assert!(
+        order > 1.2 && order < 1.8,
+        "SRI strong order = {:.4}, expected in [1.2, 1.8]",
+        order
+    );
 }
 
 /// SRI error < Milstein error at the same step count (N=50).
@@ -532,11 +541,19 @@ fn sri_stronger_than_milstein_strong() {
     let n_paths = 8000;
     let n_steps = 50;
     let milstein_err = strong_error_generic(&milstein(), n_steps, n_paths, mu, sigma, x0, t1);
-    let sri_err      = strong_error_generic(&sri(),      n_steps, n_paths, mu, sigma, x0, t1);
+    let sri_err = strong_error_generic(&sri(), n_steps, n_paths, mu, sigma, x0, t1);
     println!("Milstein strong err = {:.6}", milstein_err);
-    println!("SRI     strong err = {:.6}  (ratio {:.2}x)", sri_err, milstein_err / sri_err);
-    assert!(sri_err < milstein_err,
-        "SRI ({:.6}) should be < Milstein ({:.6})", sri_err, milstein_err);
+    println!(
+        "SRI     strong err = {:.6}  (ratio {:.2}x)",
+        sri_err,
+        milstein_err / sri_err
+    );
+    assert!(
+        sri_err < milstein_err,
+        "SRI ({:.6}) should be < Milstein ({:.6})",
+        sri_err,
+        milstein_err
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -561,13 +578,26 @@ fn cir_stays_nonnegative() {
         move |x: f64, _t: f64| sigma * x.max(0.0_f64).sqrt(),
     );
     let out = pathwise_core::simulate(
-        &sde.drift, &sde.diffusion, &euler(), 0.05, 0.0, 1.0, 1000, 500, 42
-    ).unwrap();
+        &sde.drift,
+        &sde.diffusion,
+        &euler(),
+        0.05,
+        0.0,
+        1.0,
+        1000,
+        500,
+        42,
+    )
+    .unwrap();
     // At the Feller boundary the Euler discretization may push values slightly below zero
     // even with diffusion clipping. Allow a small numerical tolerance of 1e-3.
     for val in out.iter() {
         if !val.is_nan() {
-            assert!(*val >= -1e-3, "CIR produced strongly negative value: {}", val);
+            assert!(
+                *val >= -1e-3,
+                "CIR produced strongly negative value: {}",
+                val
+            );
         }
     }
 }
@@ -581,15 +611,28 @@ fn cir_mean_exact() {
     // Feller: 2*3*0.1 = 0.6 > 0.09 -- satisfied
     let sde = cir(kappa, theta, sigma).unwrap();
     let out = pathwise_core::simulate(
-        &sde.drift, &sde.diffusion, &euler(), x0, 0.0, t1, 20_000, 500, 0
-    ).unwrap();
+        &sde.drift,
+        &sde.diffusion,
+        &euler(),
+        x0,
+        0.0,
+        t1,
+        20_000,
+        500,
+        0,
+    )
+    .unwrap();
     let col = out.column(500);
     let sample_mean: f64 = col.iter().filter(|x| x.is_finite()).sum::<f64>()
         / col.iter().filter(|x| x.is_finite()).count() as f64;
     let exact_mean = theta + (x0 - theta) * (-kappa * t1).exp();
     println!("CIR mean: {:.4} expected {:.4}", sample_mean, exact_mean);
-    assert!((sample_mean - exact_mean).abs() / exact_mean < 0.02,
-        "CIR mean {:.4} vs exact {:.4}", sample_mean, exact_mean);
+    assert!(
+        (sample_mean - exact_mean).abs() / exact_mean < 0.02,
+        "CIR mean {:.4} vs exact {:.4}",
+        sample_mean,
+        exact_mean
+    );
 }
 
 #[test]
@@ -601,7 +644,10 @@ fn cir_rejects_invalid_params() {
     // Strict Feller violation: 2*1*0.1 = 0.2, sigma^2=0.09, so this should PASS
     assert!(cir(1.0, 0.1, 0.3).is_ok(), "valid CIR should succeed");
     // Exact Feller boundary: 2*1*0.02 = 0.04 == 0.2^2; should fail
-    assert!(cir(1.0, 0.02, 0.2).is_err(), "Feller boundary should fail (strict inequality)");
+    assert!(
+        cir(1.0, 0.02, 0.2).is_err(),
+        "Feller boundary should fail (strict inequality)"
+    );
 }
 
 /// OU stationary distribution: X_T -> N(mu, sigma^2/(2*theta)) for large T.

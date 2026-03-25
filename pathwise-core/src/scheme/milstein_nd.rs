@@ -1,6 +1,6 @@
 use super::Scheme;
-use crate::state::{Diffusion, Increment};
 use crate::process::markov::Drift;
+use crate::state::{Diffusion, Increment};
 use nalgebra::SVector;
 
 /// N-dimensional Milstein scheme with diagonal Levy area terms only.
@@ -17,7 +17,9 @@ pub struct MilsteinNd<const N: usize> {
 }
 
 impl<const N: usize> MilsteinNd<N> {
-    pub fn new(h: f64) -> Self { Self { h } }
+    pub fn new(h: f64) -> Self {
+        Self { h }
+    }
 }
 
 impl<const N: usize> Scheme<SVector<f64, N>> for MilsteinNd<N> {
@@ -45,11 +47,13 @@ impl<const N: usize> Scheme<SVector<f64, N>> for MilsteinNd<N> {
         for i in 0..N {
             let mut ei = SVector::<f64, N>::zeros();
             ei[i] = 1.0;
-            let g_ii        = diffusion.apply(x,               t, &ei)[i];
-            let mut xp = *x; xp[i] += h;
-            let mut xm = *x; xm[i] -= h;
-            let g_ii_plus   = diffusion.apply(&xp, t, &ei)[i];
-            let g_ii_minus  = diffusion.apply(&xm, t, &ei)[i];
+            let g_ii = diffusion.apply(x, t, &ei)[i];
+            let mut xp = *x;
+            xp[i] += h;
+            let mut xm = *x;
+            xm[i] -= h;
+            let g_ii_plus = diffusion.apply(&xp, t, &ei)[i];
+            let g_ii_minus = diffusion.apply(&xm, t, &ei)[i];
             let dg_ii = (g_ii_plus - g_ii_minus) / (2.0 * h);
             correction[i] = 0.5 * g_ii * dg_ii * (dw[i] * dw[i] - dt);
         }
@@ -58,7 +62,9 @@ impl<const N: usize> Scheme<SVector<f64, N>> for MilsteinNd<N> {
     }
 }
 
-pub fn milstein_nd<const N: usize>() -> MilsteinNd<N> { MilsteinNd::new(1e-5) }
+pub fn milstein_nd<const N: usize>() -> MilsteinNd<N> {
+    MilsteinNd::new(1e-5)
+}
 
 #[cfg(test)]
 mod tests {
@@ -71,12 +77,18 @@ mod tests {
         let m: MilsteinNd<2> = milstein_nd();
         let e = crate::scheme::euler::EulerMaruyama;
         let drift = |_x: &SVector<f64, 2>, _t: f64| SVector::zeros();
-        let diff  = |_x: &SVector<f64, 2>, _t: f64| SVector::from([1.0_f64, 1.0]);
+        let diff = |_x: &SVector<f64, 2>, _t: f64| SVector::from([1.0_f64, 1.0]);
         let x = SVector::from([0.5_f64, -0.5]);
         let dw = SVector::from([0.1_f64, -0.2]);
-        let inc = Increment { dw, dz: SVector::zeros() };
+        let inc = Increment {
+            dw,
+            dz: SVector::zeros(),
+        };
         let xe = e.step(&drift, &diff, &x, 0.0, 0.01, &inc);
         let xm = m.step(&drift, &diff, &x, 0.0, 0.01, &inc);
-        assert!((xe - xm).norm() < 1e-8, "should be equal for constant diffusion");
+        assert!(
+            (xe - xm).norm() < 1e-8,
+            "should be equal for constant diffusion"
+        );
     }
 }
