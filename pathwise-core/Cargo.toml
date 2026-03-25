@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 ndarray = { workspace = true }
+nalgebra = { workspace = true }
 rayon = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }

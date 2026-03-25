@@ -4,6 +4,7 @@ members = ["pathwise-core", "pathwise-py"]
 
 [workspace.dependencies]
 ndarray = "0.15"
+nalgebra = { version = "0.33", default-features = false, features = ["std"] }
 rayon = "1.10"
 rand = "0.9"
 rand_distr = "0.5"
