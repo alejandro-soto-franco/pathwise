@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["pathwise-core", "pathwise-py"]
+members = ["pathwise-core", "pathwise-geo", "pathwise-py"]
 
 [workspace.dependencies]
 ndarray = "0.15"
