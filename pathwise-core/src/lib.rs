@@ -22,6 +22,8 @@
 //! ```
 
 // pathwise-core: pure Rust SDE simulation library
+mod rng;
+
 pub mod state;
 pub use state::{Diffusion, Increment, NoiseIncrement, State};
 
