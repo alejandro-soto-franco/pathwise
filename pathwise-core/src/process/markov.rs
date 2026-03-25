@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use nalgebra::SVector;
 use crate::state::{Diffusion, NoiseIncrement, State};
 
 pub trait Drift<S: State>: Fn(&S, f64) -> S + Send + Sync {}
@@ -118,6 +119,81 @@ pub fn cir(
         move |x: &f64, _t: f64| kappa * (theta - x),
         move |x: f64, _t: f64| sigma * x.max(0.0).sqrt(),
     ))
+}
+
+/// NdSDE: N-dimensional SDE with vector state and vector noise.
+pub struct NdSDE<const N: usize, D, G> {
+    pub drift: D,
+    pub diffusion: G,
+}
+
+impl<const N: usize, D, G> NdSDE<N, D, G>
+where
+    D: Fn(&SVector<f64, N>, f64) -> SVector<f64, N> + Send + Sync,
+    G: Diffusion<SVector<f64, N>, SVector<f64, N>>,
+{
+    pub fn new(drift: D, diffusion: G) -> Self {
+        Self { drift, diffusion }
+    }
+}
+
+/// Diffusion term for the Heston model (log-price, variance).
+/// State: [log S, V]. Noise: [dW1, dW2] (independent).
+///
+/// Applies the lower-triangular Cholesky matrix:
+///   d(log S) += sqrt(V) * dW1
+///   dV       += xi * sqrt(V) * (rho * dW1 + sqrt(1-rho^2) * dW2)
+///
+/// Full truncation: V is clipped to 0 in diffusion computation.
+pub struct HestonDiffusion {
+    xi: f64,
+    rho: f64,
+    rho_perp: f64,  // sqrt(1 - rho^2)
+}
+
+impl HestonDiffusion {
+    pub fn new(xi: f64, rho: f64) -> Self {
+        Self { xi, rho, rho_perp: (1.0 - rho * rho).sqrt() }
+    }
+}
+
+impl Diffusion<SVector<f64, 2>, SVector<f64, 2>> for HestonDiffusion {
+    fn apply(&self, x: &SVector<f64, 2>, _t: f64, dw: &SVector<f64, 2>) -> SVector<f64, 2> {
+        let v = x[1].max(0.0);  // full truncation
+        let sv = v.sqrt();
+        SVector::from([
+            sv * dw[0],
+            sv * self.xi * (self.rho * dw[0] + self.rho_perp * dw[1]),
+        ])
+    }
+}
+
+/// Heston stochastic volatility model.
+/// State: [log S, V]; use exp(paths[.., .., 0]) to recover S.
+///
+/// d(log S) = (mu - V/2) dt + sqrt(V) dW1
+/// dV       = kappa * (theta - V) dt + xi * sqrt(V) * (rho * dW1 + sqrt(1-rho^2) * dW2)
+///
+/// Parameters:
+/// - `mu`: risk-neutral drift of log-price
+/// - `kappa`: variance mean-reversion speed
+/// - `theta`: long-run variance
+/// - `xi`: volatility of variance (vol of vol)
+/// - `rho`: correlation between price and variance Brownian motions (typically -0.7)
+pub fn heston(
+    mu: f64,
+    kappa: f64,
+    theta: f64,
+    xi: f64,
+    rho: f64,
+) -> NdSDE<2, impl Fn(&SVector<f64, 2>, f64) -> SVector<f64, 2> + Send + Sync, HestonDiffusion> {
+    NdSDE::new(
+        move |x: &SVector<f64, 2>, _t: f64| -> SVector<f64, 2> {
+            let v = x[1].max(0.0);
+            SVector::from([mu - v / 2.0, kappa * (theta - x[1])])
+        },
+        HestonDiffusion::new(xi, rho),
+    )
 }
 
 #[cfg(test)]

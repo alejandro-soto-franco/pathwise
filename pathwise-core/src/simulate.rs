@@ -1,4 +1,4 @@
-use ndarray::Array2;
+use ndarray::{Array2, Array3};
 use rand::SeedableRng;
 use rayon::prelude::*;
 
@@ -70,6 +70,71 @@ where
     for (i, row) in rows.iter().enumerate() {
         for (j, &v) in row.iter().enumerate() {
             out[[i, j]] = v;
+        }
+    }
+    Ok(out)
+}
+
+/// Simulate `n_paths` paths of an N-dimensional SDE from `t0` to `t1`.
+///
+/// Returns Array3<f64> of shape `(n_paths, n_steps + 1, N)`.
+/// Negative values in each component are NOT clipped unless the process does so
+/// in its diffusion (e.g. CIR, Heston full-truncation).
+#[allow(clippy::too_many_arguments)]
+pub fn simulate_nd<const N: usize, D, G, SC>(
+    drift: &D,
+    diffusion: &G,
+    scheme: &SC,
+    x0: nalgebra::SVector<f64, N>,
+    t0: f64,
+    t1: f64,
+    n_paths: usize,
+    n_steps: usize,
+    seed: u64,
+) -> Result<Array3<f64>, PathwiseError>
+where
+    D: Fn(&nalgebra::SVector<f64, N>, f64) -> nalgebra::SVector<f64, N> + Send + Sync,
+    G: Diffusion<nalgebra::SVector<f64, N>, nalgebra::SVector<f64, N>> + Sync,
+    SC: Scheme<nalgebra::SVector<f64, N>, Noise = nalgebra::SVector<f64, N>>,
+{
+    if n_paths == 0 || n_steps == 0 {
+        return Err(PathwiseError::InvalidParameters("n_paths and n_steps must be > 0".into()));
+    }
+    if t1 <= t0 {
+        return Err(PathwiseError::InvalidParameters("t1 must be > t0".into()));
+    }
+
+    let dt = (t1 - t0) / n_steps as f64;
+    let base_seed = splitmix64(seed);
+
+    let rows: Vec<Vec<nalgebra::SVector<f64, N>>> = (0..n_paths)
+        .into_par_iter()
+        .map(|i| {
+            let path_seed = splitmix64(base_seed.wrapping_add(i as u64));
+            let mut rng = rand::rngs::SmallRng::seed_from_u64(path_seed);
+            let mut path = Vec::with_capacity(n_steps + 1);
+            let mut x = x0;
+            path.push(x);
+            for step in 0..n_steps {
+                let t = t0 + step as f64 * dt;
+                let inc = <nalgebra::SVector<f64, N> as NoiseIncrement>::sample(&mut rng, dt);
+                x = scheme.step(drift, diffusion, &x, t, dt, &inc);
+                // Check for non-finite in any component; freeze path
+                if x.iter().any(|v| !v.is_finite()) {
+                    x = nalgebra::SVector::from_fn(|_, _| f64::NAN);
+                }
+                path.push(x);
+            }
+            path
+        })
+        .collect();
+
+    let mut out = Array3::zeros((n_paths, n_steps + 1, N));
+    for (i, path) in rows.iter().enumerate() {
+        for (j, state) in path.iter().enumerate() {
+            for k in 0..N {
+                out[[i, j, k]] = state[k];
+            }
         }
     }
     Ok(out)
