@@ -228,7 +228,7 @@ fn milstein_stronger_than_euler_strong() {
 // At dt=0.2 (N=5), sigma=0.5, mu=0.5: E_disc ≈ 0.03  >>  MC noise ≈ 0.009
 // ---------------------------------------------------------------------------
 
-fn weak_error_mean<S: pathwise_core::scheme::Scheme>(
+fn weak_error_mean<S: pathwise_core::scheme::Scheme<f64, Noise = f64>>(
     scheme: &S,
     n_steps: usize,
     n_paths: usize,
