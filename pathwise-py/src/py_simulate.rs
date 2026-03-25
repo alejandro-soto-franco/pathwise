@@ -230,6 +230,46 @@ pub fn simulate<'py>(
             .map_err(to_py_err)?;
             Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
         }
+        SDEKind::CorrOu { .. } if use_sri => {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "SRI requires scalar or diagonal noise; use milstein() or euler() for CorrOu",
+            ));
+        }
+        SDEKind::CorrOu { theta, mu, sigma_flat, n } => {
+            let dim = *n;
+            if dim != 2 {
+                return Err(pyo3::exceptions::PyNotImplementedError::new_err(
+                    "corr_ou Python bindings currently support N=2 only; use the Rust API for other dimensions",
+                ));
+            }
+            use nalgebra::{Matrix2, SVector};
+            let sigma = Matrix2::from_row_slice(sigma_flat);
+            let mu_arr = SVector::<f64, 2>::from([mu[0], mu[1]]);
+            let x0_nd = SVector::<f64, 2>::from([x0, x0]);
+            let sde_rust = pathwise_core::corr_ou::<2>(*theta, mu_arr, sigma)
+                .map_err(to_py_err)?;
+            let result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate_nd::<2, _, _, _>(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein_nd::<2>(),
+                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate_nd::<2, _, _, _>(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
+        }
         SDEKind::Custom { drift, diffusion } => {
             if use_sri {
                 return Err(pyo3::exceptions::PyValueError::new_err(
