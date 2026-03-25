@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "pathwise"
+name = "pathwise-sde"
 version = "0.2.0"
 description = "High-performance SDE simulation: Rust core, Python API"
 readme = "README.md"
