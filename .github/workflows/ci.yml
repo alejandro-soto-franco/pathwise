@@ -7,18 +7,25 @@ on:
 
 jobs:
   rust:
-    name: Rust tests
-    runs-on: ubuntu-latest
+    name: Rust tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test -p pathwise-core
-      - run: cargo test -p pathwise-core --test convergence
-      - run: cargo clippy -- -D warnings
-      - run: cargo fmt --check
+      - name: Build workspace
+        run: cargo build --workspace
+      - name: Test workspace
+        run: cargo test --workspace
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+      - name: Format check
+        run: cargo fmt --all --check
 
   python:
-    name: Python tests
+    name: Python tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -29,6 +36,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: dtolnay/rust-toolchain@stable
-      - run: pip install maturin pytest numpy scipy
-      - run: pip install .
-      - run: pytest tests/ -v
+      - name: Install dependencies
+        run: pip install maturin pytest numpy scipy
+      - name: Build and install
+        run: pip install -e . --no-build-isolation
+      - name: Run API and numerical tests
+        run: pytest tests/ -v
+      - name: Run scheme/process binding tests
+        run: pytest pathwise-py/tests/ -v
