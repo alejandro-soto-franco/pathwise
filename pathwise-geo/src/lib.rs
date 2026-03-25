@@ -6,4 +6,4 @@ pub mod simulate;
 pub use process::brownian_motion_on;
 pub use scheme::{GeodesicEuler, GeodesicMilstein, GeodesicSRI};
 pub use sde::ManifoldSDE;
-pub use simulate::{manifold_simulate, paths_to_array};
+pub use simulate::{manifold_simulate, manifold_simulate_with_scheme, paths_to_array, GeoScheme};
