@@ -543,6 +543,67 @@ fn sri_stronger_than_milstein_strong() {
 // Statistical moment tests (continued)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// CIR process tests
+// ---------------------------------------------------------------------------
+
+#[test]
+fn cir_stays_nonnegative() {
+    // Test non-negativity with a manually constructed CIR-like SDE where Feller is at the
+    // boundary (2*kappa*theta == sigma^2 = 0.04). The cir() constructor would reject this
+    // via FellerViolation, so we bypass it with SDE::new directly to test that the
+    // `x.max(0.0)` clipping in the diffusion keeps all values >= 0.
+    use pathwise_core::scheme::euler;
+    let (kappa, theta, sigma) = (1.0_f64, 0.02_f64, 0.2_f64);
+    // 2*1.0*0.02 = 0.04 == 0.2^2 = 0.04: exactly at Feller boundary
+    let sde = pathwise_core::SDE::new(
+        move |x: &f64, _t: f64| kappa * (theta - x),
+        move |x: f64, _t: f64| sigma * x.max(0.0_f64).sqrt(),
+    );
+    let out = pathwise_core::simulate(
+        &sde.drift, &sde.diffusion, &euler(), 0.05, 0.0, 1.0, 1000, 500, 42
+    ).unwrap();
+    // At the Feller boundary the Euler discretization may push values slightly below zero
+    // even with diffusion clipping. Allow a small numerical tolerance of 1e-3.
+    for val in out.iter() {
+        if !val.is_nan() {
+            assert!(*val >= -1e-3, "CIR produced strongly negative value: {}", val);
+        }
+    }
+}
+
+#[test]
+fn cir_mean_exact() {
+    // E[X_T] = theta + (x0 - theta)*exp(-kappa*T)
+    use pathwise_core::process::markov::cir;
+    use pathwise_core::scheme::euler;
+    let (kappa, theta, sigma, x0, t1) = (3.0_f64, 0.1, 0.3, 0.5, 1.0);
+    // Feller: 2*3*0.1 = 0.6 > 0.09 -- satisfied
+    let sde = cir(kappa, theta, sigma).unwrap();
+    let out = pathwise_core::simulate(
+        &sde.drift, &sde.diffusion, &euler(), x0, 0.0, t1, 20_000, 500, 0
+    ).unwrap();
+    let col = out.column(500);
+    let sample_mean: f64 = col.iter().filter(|x| x.is_finite()).sum::<f64>()
+        / col.iter().filter(|x| x.is_finite()).count() as f64;
+    let exact_mean = theta + (x0 - theta) * (-kappa * t1).exp();
+    println!("CIR mean: {:.4} expected {:.4}", sample_mean, exact_mean);
+    assert!((sample_mean - exact_mean).abs() / exact_mean < 0.02,
+        "CIR mean {:.4} vs exact {:.4}", sample_mean, exact_mean);
+}
+
+#[test]
+fn cir_rejects_invalid_params() {
+    use pathwise_core::process::markov::cir;
+    assert!(cir(0.0, 0.1, 0.3).is_err(), "kappa=0 should fail");
+    assert!(cir(1.0, 0.0, 0.3).is_err(), "theta=0 should fail");
+    assert!(cir(1.0, 0.1, -0.1).is_err(), "sigma<0 should fail");
+    // Strict Feller violation: 2*1*0.1 = 0.2, sigma^2=0.09, so this should PASS
+    assert!(cir(1.0, 0.1, 0.3).is_ok(), "valid CIR should succeed");
+    // Exact Feller boundary: 2*1*0.02 = 0.04 == 0.2^2; should fail
+    assert!(cir(1.0, 0.02, 0.2).is_err(), "Feller boundary should fail (strict inequality)");
+}
+
 /// OU stationary distribution: X_T -> N(mu, sigma^2/(2*theta)) for large T.
 #[test]
 fn ou_stationary_distribution() {

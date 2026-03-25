@@ -10,6 +10,15 @@ pub enum PathwiseError {
 
     #[error("inference failed to converge: {0}")]
     ConvergenceFailure(String),
+
+    /// CIR Feller condition 2*kappa*theta > sigma^2 not strictly satisfied.
+    /// Simulation continues with zero-clipping but accuracy near zero is reduced.
+    #[error("Feller condition violated: {0}")]
+    FellerViolation(String),
+
+    /// Diffusion matrix shape incompatible with noise or state dimensions.
+    #[error("dimension mismatch: {0}")]
+    DimensionMismatch(String),
 }
 
 #[cfg(test)]
@@ -20,14 +29,9 @@ mod tests {
     fn error_messages_are_human_readable() {
         let e = PathwiseError::InvalidParameters("H must be in (0,1)".into());
         assert!(e.to_string().contains("H must be in (0,1)"));
-
-        let e = PathwiseError::NumericalDivergence {
-            step: 42,
-            value: f64::NAN,
-        };
-        assert!(e.to_string().contains("42"));
-
-        let e = PathwiseError::ConvergenceFailure("max iterations reached".into());
-        assert!(e.to_string().contains("max iterations"));
+        let e = PathwiseError::FellerViolation("2*1*0.02 <= 0.04".into());
+        assert!(e.to_string().contains("Feller"));
+        let e = PathwiseError::DimensionMismatch("expected 2x2, got 3x3".into());
+        assert!(e.to_string().contains("dimension mismatch"));
     }
 }

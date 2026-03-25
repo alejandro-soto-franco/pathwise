@@ -93,6 +93,33 @@ pub fn ou(theta: f64, mu: f64, sigma: f64) -> SDE<f64, impl Drift<f64>, impl Dif
     )
 }
 
+/// Cox-Ingersoll-Ross: dX = kappa*(theta - X) dt + sigma*sqrt(X) dW
+///
+/// Requires `kappa > 0`, `theta > 0`, `sigma > 0`.
+/// Strict Feller condition: `2*kappa*theta > sigma^2`. Returns `Err(FellerViolation)` if not met.
+/// Simulation clips X to 0.0 when discretization produces negative values (full truncation).
+pub fn cir(
+    kappa: f64,
+    theta: f64,
+    sigma: f64,
+) -> Result<SDE<f64, impl Drift<f64>, impl Fn(f64, f64) -> f64 + Send + Sync>, crate::error::PathwiseError> {
+    if kappa <= 0.0 || theta <= 0.0 || sigma <= 0.0 {
+        return Err(crate::error::PathwiseError::InvalidParameters(
+            format!("CIR requires kappa, theta, sigma > 0; got kappa={}, theta={}, sigma={}", kappa, theta, sigma)
+        ));
+    }
+    if 2.0 * kappa * theta <= sigma * sigma {
+        return Err(crate::error::PathwiseError::FellerViolation(
+            format!("2*kappa*theta = {:.4} <= sigma^2 = {:.4}; boundary is reflecting in continuous time but clipping may introduce bias under discretization",
+                2.0 * kappa * theta, sigma * sigma)
+        ));
+    }
+    Ok(SDE::new(
+        move |x: &f64, _t: f64| kappa * (theta - x),
+        move |x: f64, _t: f64| sigma * x.max(0.0).sqrt(),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
