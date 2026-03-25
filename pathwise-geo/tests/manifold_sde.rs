@@ -1,6 +1,6 @@
 use cartan_manifolds::{sphere::Sphere, so::SpecialOrthogonal};
 use nalgebra::{SMatrix, SVector};
-use pathwise_geo::{GeodesicEuler, ManifoldSDE, manifold_simulate};
+use pathwise_geo::{GeodesicEuler, GeodesicMilstein, ManifoldSDE, manifold_simulate, manifold_simulate_with_scheme};
 
 fn sphere_sde() -> ManifoldSDE<
     Sphere<3>,
@@ -58,6 +58,27 @@ fn geodesic_euler_stays_on_so3() {
                 "SO3: R^T R != I, diff={}",
                 (rtr - id).norm()
             );
+        }
+    }
+}
+
+#[test]
+fn geodesic_milstein_stays_on_sphere() {
+    let s2 = Sphere::<3>;
+    let sde = ManifoldSDE::new(
+        s2,
+        |_x: &SVector<f64, 3>, _t: f64| SVector::zeros(),
+        |x: &SVector<f64, 3>, _t: f64| {
+            let e1 = SVector::from([1.0_f64, 0.0, 0.0]);
+            e1 - x * x.dot(&e1)
+        },
+    );
+    let x0 = SVector::from([0.0_f64, 0.0, 1.0]);
+    let paths = manifold_simulate_with_scheme(&sde, &GeodesicMilstein::new(), x0, 0.0, 1.0, 100, 100, 0);
+    for path in &paths {
+        for point in path {
+            let norm = point.norm();
+            assert!((norm - 1.0).abs() < 1e-6, "Milstein point off sphere: {}", norm);
         }
     }
 }

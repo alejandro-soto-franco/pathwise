@@ -1,7 +1,8 @@
 use crate::sde::ManifoldSDE;
 use crate::scheme::euler::GeodesicEuler;
-use cartan_core::Manifold;
-use pathwise_core::state::NoiseIncrement;
+use crate::scheme::milstein::GeodesicMilstein;
+use cartan_core::{Manifold, ParallelTransport};
+use pathwise_core::state::{Increment, NoiseIncrement};
 use rand::SeedableRng;
 
 fn splitmix64(mut x: u64) -> u64 {
@@ -46,6 +47,109 @@ where
                 let t = t0 + step as f64 * dt;
                 let inc = <f64 as NoiseIncrement>::sample(&mut rng, dt);
                 x = scheme.step(sde, &x, t, dt, &inc);
+                path.push(x.clone());
+            }
+            path
+        })
+        .collect()
+}
+
+/// Internal trait to unify geodesic scheme step dispatch.
+///
+/// Implementors provide a single `step_geo` method that advances x by one step.
+/// The M: ParallelTransport bound is required for the GeodesicMilstein impl;
+/// GeodesicEuler satisfies it but does not use the transport operation.
+pub trait GeoScheme<M, D, G>
+where
+    M: Manifold + ParallelTransport,
+    D: Fn(&M::Point, f64) -> M::Tangent,
+    G: Fn(&M::Point, f64) -> M::Tangent,
+{
+    /// Advance x by one scheme step.
+    fn step_geo(
+        &self,
+        sde: &ManifoldSDE<M, D, G>,
+        x: &M::Point,
+        t: f64,
+        dt: f64,
+        inc: &Increment<f64>,
+    ) -> M::Point;
+}
+
+impl<M, D, G> GeoScheme<M, D, G> for GeodesicEuler
+where
+    M: Manifold + ParallelTransport,
+    D: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+    G: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+{
+    fn step_geo(
+        &self,
+        sde: &ManifoldSDE<M, D, G>,
+        x: &M::Point,
+        t: f64,
+        dt: f64,
+        inc: &Increment<f64>,
+    ) -> M::Point {
+        self.step(sde, x, t, dt, inc)
+    }
+}
+
+impl<M, D, G> GeoScheme<M, D, G> for GeodesicMilstein
+where
+    M: Manifold + ParallelTransport,
+    D: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+    G: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+{
+    fn step_geo(
+        &self,
+        sde: &ManifoldSDE<M, D, G>,
+        x: &M::Point,
+        t: f64,
+        dt: f64,
+        inc: &Increment<f64>,
+    ) -> M::Point {
+        self.step(sde, x, t, dt, inc)
+    }
+}
+
+/// Simulate manifold SDE paths using any `GeoScheme` implementor.
+///
+/// Generic version of `manifold_simulate` that works with GeodesicEuler,
+/// GeodesicMilstein, or any future scheme implementing `GeoScheme`.
+/// Returns `Vec<Vec<M::Point>>` with outer index = path, inner index = time step.
+/// Each inner vec has `n_steps + 1` points (including the initial condition x0).
+#[allow(clippy::too_many_arguments)]
+pub fn manifold_simulate_with_scheme<M, D, G, SC>(
+    sde: &ManifoldSDE<M, D, G>,
+    scheme: &SC,
+    x0: M::Point,
+    t0: f64,
+    t1: f64,
+    n_paths: usize,
+    n_steps: usize,
+    seed: u64,
+) -> Vec<Vec<M::Point>>
+where
+    M: Manifold + ParallelTransport + Clone + Send + Sync,
+    M::Point: Clone + Send + Sync,
+    M::Tangent: Clone + Send + Sync,
+    D: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+    G: Fn(&M::Point, f64) -> M::Tangent + Send + Sync,
+    SC: GeoScheme<M, D, G>,
+{
+    let dt = (t1 - t0) / n_steps as f64;
+    let base_seed = splitmix64(seed);
+    (0..n_paths)
+        .map(|i| {
+            let path_seed = splitmix64(base_seed.wrapping_add(i as u64));
+            let mut rng = rand::rngs::SmallRng::seed_from_u64(path_seed);
+            let mut path = Vec::with_capacity(n_steps + 1);
+            let mut x = x0.clone();
+            path.push(x.clone());
+            for step in 0..n_steps {
+                let t = t0 + step as f64 * dt;
+                let inc = <f64 as NoiseIncrement>::sample(&mut rng, dt);
+                x = scheme.step_geo(sde, &x, t, dt, &inc);
                 path.push(x.clone());
             }
             path
