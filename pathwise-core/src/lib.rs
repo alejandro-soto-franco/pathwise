@@ -22,11 +22,14 @@
 //! ```
 
 // pathwise-core: pure Rust SDE simulation library
+pub mod state;
+pub use state::{Diffusion, Increment, NoiseIncrement, State};
+
 pub mod error;
 pub use error::PathwiseError;
 
 pub mod process;
-pub use process::{bm, gbm, ou, Diffusion, Drift, State, SDE};
+pub use process::{bm, gbm, ou, Drift, SDE};
 
 pub mod scheme;
 pub use scheme::{euler, milstein, Scheme};
