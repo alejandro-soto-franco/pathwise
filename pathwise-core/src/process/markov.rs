@@ -196,6 +196,44 @@ pub fn heston(
     )
 }
 
+/// Correlated Ornstein-Uhlenbeck diffusion via Cholesky factor.
+/// apply: L * dW where L = chol(Sigma)
+pub struct CorrOuDiffusion<const N: usize> {
+    l: nalgebra::SMatrix<f64, N, N>,
+}
+
+impl<const N: usize> crate::state::Diffusion<nalgebra::SVector<f64, N>, nalgebra::SVector<f64, N>> for CorrOuDiffusion<N> {
+    fn apply(&self, _x: &nalgebra::SVector<f64, N>, _t: f64, dw: &nalgebra::SVector<f64, N>) -> nalgebra::SVector<f64, N> {
+        self.l * dw
+    }
+}
+
+/// N-dimensional correlated Ornstein-Uhlenbeck process.
+/// dX = theta*(mu - X) dt + L dW  where L = chol(Sigma)
+///
+/// Returns `Err(DimensionMismatch)` if sigma_mat Cholesky fails (not positive-definite).
+pub fn corr_ou<const N: usize>(
+    theta: f64,
+    mu: nalgebra::SVector<f64, N>,
+    sigma_mat: nalgebra::SMatrix<f64, N, N>,
+) -> Result<
+    NdSDE<N, impl Fn(&nalgebra::SVector<f64, N>, f64) -> nalgebra::SVector<f64, N> + Send + Sync, CorrOuDiffusion<N>>,
+    crate::error::PathwiseError,
+> {
+    let chol = nalgebra::Cholesky::new(sigma_mat).ok_or_else(|| {
+        crate::error::PathwiseError::DimensionMismatch(
+            "sigma_mat is not positive-definite (Cholesky failed)".into()
+        )
+    })?;
+    let l = chol.l();
+    Ok(NdSDE::new(
+        move |x: &nalgebra::SVector<f64, N>, _t: f64| -> nalgebra::SVector<f64, N> {
+            (mu - x) * theta
+        },
+        CorrOuDiffusion { l },
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
