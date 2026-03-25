@@ -1,5 +1,5 @@
-use crate::state::{Diffusion, Increment, NoiseIncrement, State};
 use crate::process::markov::Drift;
+use crate::state::{Diffusion, Increment, NoiseIncrement, State};
 
 /// One-step advance of an SDE of type S.
 ///

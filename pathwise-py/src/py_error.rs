@@ -16,7 +16,9 @@ pub fn to_py_err(e: PathwiseError) -> PyErr {
             NumericalDivergence::new_err(format!("diverged at step {step}: value={value}"))
         }
         PathwiseError::ConvergenceFailure(msg) => ConvergenceError::new_err(msg),
-        PathwiseError::FellerViolation(msg) => PyValueError::new_err(format!("Feller condition violated: {msg}")),
+        PathwiseError::FellerViolation(msg) => {
+            PyValueError::new_err(format!("Feller condition violated: {msg}"))
+        }
         PathwiseError::DimensionMismatch(msg) => PyValueError::new_err(msg),
     }
 }

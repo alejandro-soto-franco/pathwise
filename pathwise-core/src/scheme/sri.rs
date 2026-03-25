@@ -1,7 +1,7 @@
 // pathwise-core/src/scheme/sri.rs
 use super::Scheme;
-use crate::state::{Diffusion, Increment};
 use crate::process::markov::Drift;
+use crate::state::{Diffusion, Increment};
 
 /// Kloeden-Platen strong order 1.5 Taylor scheme for scalar autonomous SDEs.
 ///
@@ -40,7 +40,9 @@ pub struct Sri {
 }
 
 impl Sri {
-    pub fn new(h: f64) -> Self { Self { h } }
+    pub fn new(h: f64) -> Self {
+        Self { h }
+    }
 }
 
 impl Scheme<f64> for Sri {
@@ -60,20 +62,20 @@ impl Scheme<f64> for Sri {
         G: Diffusion<f64, f64>,
     {
         let dw = inc.dw;
-        let dz = inc.dz;  // I_{(0,1)} = integral_0^dt W(s) ds
+        let dz = inc.dz; // I_{(0,1)} = integral_0^dt W(s) ds
         let h = self.h;
 
         // f(x,t) and its central finite difference
         let f = drift(x, t);
-        let f_plus  = drift(&(x + h), t);
+        let f_plus = drift(&(x + h), t);
         let f_minus = drift(&(x - h), t);
-        let df_dx   = (f_plus - f_minus) / (2.0 * h);
+        let df_dx = (f_plus - f_minus) / (2.0 * h);
 
         // g(x,t) and its finite-difference derivatives (unit noise via blanket impl)
-        let g       = diffusion.apply(x, t, &1.0_f64);
-        let g_plus  = diffusion.apply(&(x + h), t, &1.0_f64);
+        let g = diffusion.apply(x, t, &1.0_f64);
+        let g_plus = diffusion.apply(&(x + h), t, &1.0_f64);
         let g_minus = diffusion.apply(&(x - h), t, &1.0_f64);
-        let dg_dx   = (g_plus - g_minus) / (2.0 * h);
+        let dg_dx = (g_plus - g_minus) / (2.0 * h);
         let d2g_dx2 = (g_plus - 2.0 * g + g_minus) / (h * h);
 
         // I_{(1,0)} = dt*dW - I_{(0,1)} = dt*dW - dZ
@@ -103,7 +105,9 @@ impl Scheme<f64> for Sri {
     }
 }
 
-pub fn sri() -> Sri { Sri::new(1e-4) }
+pub fn sri() -> Sri {
+    Sri::new(1e-4)
+}
 
 #[cfg(test)]
 mod tests {
@@ -122,8 +126,12 @@ mod tests {
         let inc = Increment { dw: 0.3, dz: 0.001 };
         let x_euler = e.step(&b.drift, &b.diffusion, &x, 0.0, 0.01, &inc);
         let x_sri = s.step(&b.drift, &b.diffusion, &x, 0.0, 0.01, &inc);
-        assert!((x_euler - x_sri).abs() < 1e-6,
-            "BM: euler={} sri={}", x_euler, x_sri);
+        assert!(
+            (x_euler - x_sri).abs() < 1e-6,
+            "BM: euler={} sri={}",
+            x_euler,
+            x_sri
+        );
     }
 
     #[test]
@@ -134,11 +142,17 @@ mod tests {
         let s = sri();
         let m = crate::scheme::milstein::milstein();
         let x = 1.0_f64;
-        let inc = Increment { dw: 0.05, dz: 0.0001 };
+        let inc = Increment {
+            dw: 0.05,
+            dz: 0.0001,
+        };
         let dt = 0.01;
         let x_sri = s.step(&gbm.drift, &gbm.diffusion, &x, 0.0, dt, &inc);
         let x_mil = m.step(&gbm.drift, &gbm.diffusion, &x, 0.0, dt, &inc);
         // They differ because SRI includes the I_{(1,0)}, I_{(0,1)}, and I_{(1,1,1)} terms
-        assert!((x_sri - x_mil).abs() > 1e-10, "SRI and Milstein should differ");
+        assert!(
+            (x_sri - x_mil).abs() > 1e-10,
+            "SRI and Milstein should differ"
+        );
     }
 }

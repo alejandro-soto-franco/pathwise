@@ -70,7 +70,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else if use_sri {
@@ -79,7 +84,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::sri(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -88,12 +98,19 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result)
+                .into_any()
+                .unbind())
         }
         SDEKind::Gbm { mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::gbm(*mu, *sigma);
@@ -103,7 +120,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else if use_sri {
@@ -112,7 +134,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::sri(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -121,12 +148,19 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result)
+                .into_any()
+                .unbind())
         }
         SDEKind::Ou { theta, mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::ou(*theta, *mu, *sigma);
@@ -136,7 +170,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else if use_sri {
@@ -145,7 +184,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::sri(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -154,14 +198,25 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result)
+                .into_any()
+                .unbind())
         }
-        SDEKind::Cir { kappa, theta, sigma } => {
+        SDEKind::Cir {
+            kappa,
+            theta,
+            sigma,
+        } => {
             // Feller condition already validated in cir() constructor; unwrap is safe here.
             let sde_rust = pathwise_core::cir(*kappa, *theta, *sigma).map_err(to_py_err)?;
             let mut result = if use_milstein {
@@ -170,7 +225,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else if use_sri {
@@ -179,7 +239,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::sri(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -188,7 +253,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0, t0, t1, n_paths, n_steps, seed,
+                        x0,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
@@ -198,9 +268,17 @@ pub fn simulate<'py>(
             // may still go slightly negative under Euler. Clip post-step to enforce
             // the non-negativity constraint that holds in continuous time.
             result.mapv_inplace(|v| if v < 0.0 { 0.0 } else { v });
-            Ok(numpy::PyArray2::from_owned_array(py, result).into_any().unbind())
+            Ok(numpy::PyArray2::from_owned_array(py, result)
+                .into_any()
+                .unbind())
         }
-        SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+        SDEKind::Heston {
+            mu,
+            kappa,
+            theta,
+            xi,
+            rho,
+        } => {
             if use_sri {
                 return Err(pyo3::exceptions::PyValueError::new_err(
                     "SRI requires scalar or diagonal noise; use milstein() or euler() for Heston",
@@ -215,7 +293,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein_nd::<2>(),
-                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                        x0_nd,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -224,19 +307,27 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                        x0_nd,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
             Ok(PyArray3::from_owned_array(py, result).into_any().unbind())
         }
-        SDEKind::CorrOu { .. } if use_sri => {
-            Err(pyo3::exceptions::PyValueError::new_err(
-                "SRI requires scalar or diagonal noise; use milstein() or euler() for CorrOu",
-            ))
-        }
-        SDEKind::CorrOu { theta, mu, sigma_flat, n } => {
+        SDEKind::CorrOu { .. } if use_sri => Err(pyo3::exceptions::PyValueError::new_err(
+            "SRI requires scalar or diagonal noise; use milstein() or euler() for CorrOu",
+        )),
+        SDEKind::CorrOu {
+            theta,
+            mu,
+            sigma_flat,
+            n,
+        } => {
             let dim = *n;
             if dim != 2 {
                 return Err(pyo3::exceptions::PyNotImplementedError::new_err(
@@ -251,15 +342,19 @@ pub fn simulate<'py>(
             // currently exposed in the Python API; callers needing different start values should use
             // the Rust API directly.
             let x0_nd = SVector::<f64, 2>::from([x0, x0]);
-            let sde_rust = pathwise_core::corr_ou::<2>(*theta, mu_arr, sigma)
-                .map_err(to_py_err)?;
+            let sde_rust = pathwise_core::corr_ou::<2>(*theta, mu_arr, sigma).map_err(to_py_err)?;
             let result = if use_milstein {
                 py.allow_threads(|| {
                     pathwise_core::simulate_nd::<2, _, _, _>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein_nd::<2>(),
-                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                        x0_nd,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             } else {
@@ -268,7 +363,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                        x0_nd,
+                        t0,
+                        t1,
+                        n_paths,
+                        n_steps,
+                        seed,
                     )
                 })
             }
