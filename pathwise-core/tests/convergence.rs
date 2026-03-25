@@ -449,6 +449,100 @@ fn ou_mean_and_variance_exact() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// SRI convergence tests
+// ---------------------------------------------------------------------------
+
+/// Strong error using common-noise for any Scheme<f64>.
+///
+/// Generates `(dW, dZ)` pairs from a single RNG so that `dZ` is properly correlated
+/// with `dW` via the standard Brownian-iterated-integral formula:
+///   dZ = (dt/2)*dW - sqrt(dt^3/12)*z2
+/// where `z2` is an independent standard normal drawn from the SAME RNG stream
+/// immediately after `z1` (which produces `dW`).
+///
+/// The exact GBM reference uses only the cumulative `W_T = sum(dW_i)`, so it shares
+/// the same Brownian path as the numerical scheme for the common-noise coupling.
+fn strong_error_generic<SC: pathwise_core::scheme::Scheme<f64, Noise = f64>>(
+    scheme: &SC,
+    n_steps: usize,
+    n_paths: usize,
+    mu: f64,
+    sigma: f64,
+    x0: f64,
+    t1: f64,
+) -> f64 {
+    use rand::SeedableRng;
+    use rand_distr::{Distribution, Normal};
+    let dt = t1 / n_steps as f64;
+    let sqrt_dt = dt.sqrt();
+    let g = pathwise_core::gbm(mu, sigma);
+    let normal = Normal::new(0.0_f64, 1.0).unwrap();
+    let mut total_error = 0.0_f64;
+    for i in 0..n_paths {
+        let mut rng = rand::rngs::SmallRng::seed_from_u64((i as u64) ^ 0xDEAD_BEEF_CAFE);
+        // Generate (dW, dZ) pairs with proper correlation from a single RNG stream.
+        // z1 -> dW, z2 -> dZ (correlated via the iterated-integral formula).
+        let incs: Vec<pathwise_core::state::Increment<f64>> = (0..n_steps).map(|_| {
+            let z1 = normal.sample(&mut rng);
+            let z2 = normal.sample(&mut rng);
+            let dw = z1 * sqrt_dt;
+            let dz = (dt / 2.0) * dw - (dt.powi(3) / 12.0).sqrt() * z2;
+            pathwise_core::state::Increment { dw, dz }
+        }).collect();
+        // Exact GBM terminal value using the same Brownian path W_T = sum(dW_i).
+        let w_t: f64 = incs.iter().map(|inc| inc.dw).sum();
+        let x_exact = x0 * ((mu - 0.5 * sigma * sigma) * t1 + sigma * w_t).exp();
+        // Scheme run with the same increments.
+        let mut x = x0;
+        for (j, inc) in incs.iter().enumerate() {
+            x = scheme.step(&g.drift, &g.diffusion, &x, j as f64 * dt, dt, inc);
+            if !x.is_finite() { x = f64::NAN; break; }
+        }
+        total_error += (x - x_exact).abs();
+    }
+    total_error / n_paths as f64
+}
+
+/// SRI on GBM: strong order ~1.5 via common-noise log-log regression.
+#[test]
+fn sri_strong_order_on_gbm() {
+    use pathwise_core::scheme::sri;
+    let (mu, sigma, x0, t1) = (0.05_f64, 0.3_f64, 1.0_f64, 1.0_f64);
+    let n_paths = 8000;
+    let step_counts = [25usize, 50, 100, 200, 400];
+    let dts: Vec<f64> = step_counts.iter().map(|&n| t1 / n as f64).collect();
+    let errors: Vec<f64> = step_counts.iter().map(|&n_steps| {
+        strong_error_generic(
+            &sri(),
+            n_steps, n_paths, mu, sigma, x0, t1,
+        )
+    }).collect();
+    let order = convergence_order(&dts, &errors);
+    println!("SRI strong order = {:.4}  (expected ~1.5, band [1.2, 1.8])", order);
+    assert!(order > 1.2 && order < 1.8,
+        "SRI strong order = {:.4}, expected in [1.2, 1.8]", order);
+}
+
+/// SRI error < Milstein error at the same step count (N=50).
+#[test]
+fn sri_stronger_than_milstein_strong() {
+    use pathwise_core::scheme::{milstein, sri};
+    let (mu, sigma, x0, t1) = (0.05_f64, 0.3_f64, 1.0_f64, 1.0_f64);
+    let n_paths = 8000;
+    let n_steps = 50;
+    let milstein_err = strong_error_generic(&milstein(), n_steps, n_paths, mu, sigma, x0, t1);
+    let sri_err      = strong_error_generic(&sri(),      n_steps, n_paths, mu, sigma, x0, t1);
+    println!("Milstein strong err = {:.6}", milstein_err);
+    println!("SRI     strong err = {:.6}  (ratio {:.2}x)", sri_err, milstein_err / sri_err);
+    assert!(sri_err < milstein_err,
+        "SRI ({:.6}) should be < Milstein ({:.6})", sri_err, milstein_err);
+}
+
+// ---------------------------------------------------------------------------
+// Statistical moment tests (continued)
+// ---------------------------------------------------------------------------
+
 /// OU stationary distribution: X_T -> N(mu, sigma^2/(2*theta)) for large T.
 #[test]
 fn ou_stationary_distribution() {
