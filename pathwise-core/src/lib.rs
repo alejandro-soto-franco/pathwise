@@ -32,7 +32,7 @@ pub mod process;
 pub use process::{bm, gbm, ou, Drift, SDE};
 
 pub mod scheme;
-pub use scheme::{euler, milstein, Scheme};
+pub use scheme::{euler, milstein, sri, Scheme, Sri};
 
 pub mod simulate;
 pub use simulate::simulate;
