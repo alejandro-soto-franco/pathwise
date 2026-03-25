@@ -212,6 +212,7 @@ impl<const N: usize> crate::state::Diffusion<nalgebra::SVector<f64, N>, nalgebra
 /// dX = theta*(mu - X) dt + L dW  where L = chol(Sigma)
 ///
 /// Returns `Err(DimensionMismatch)` if sigma_mat Cholesky fails (not positive-definite).
+#[allow(clippy::type_complexity)]
 pub fn corr_ou<const N: usize>(
     theta: f64,
     mu: nalgebra::SVector<f64, N>,
