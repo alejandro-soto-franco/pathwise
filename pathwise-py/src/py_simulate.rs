@@ -1,8 +1,8 @@
 use crate::py_error::to_py_err;
 use crate::py_process::{PySDE, SDEKind};
-use crate::py_scheme::{PyEuler, PyMilstein};
+use crate::py_scheme::{PyEuler, PyMilstein, PySri};
 use ndarray::Array2;
-use numpy::PyArray2;
+use numpy::{PyArray2, PyArray3};
 use pyo3::prelude::*;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
@@ -15,9 +15,10 @@ fn splitmix64(mut x: u64) -> u64 {
     x ^ (x >> 31)
 }
 
-/// Simulate SDE paths. Returns np.ndarray of shape (n_paths, n_steps + 1).
+/// Simulate SDE paths. Returns np.ndarray of shape (n_paths, n_steps + 1) for scalar SDEs,
+/// or (n_paths, n_steps + 1, N) for N-dimensional SDEs such as Heston.
 ///
-/// Built-in processes (bm, gbm, ou) run in parallel via Rayon (GIL released).
+/// Built-in processes (bm, gbm, ou, cir, heston) run in parallel via Rayon (GIL released).
 /// Custom Python-callable SDEs run serially (GIL required per step).
 ///
 /// Non-finite values are stored as NaN; check output if stability is a concern.
@@ -35,7 +36,7 @@ pub fn simulate<'py>(
     t0: f64,
     device: &str,
     seed: u64,
-) -> PyResult<Bound<'py, PyArray2<f64>>> {
+) -> PyResult<PyObject> {
     if device != "cpu" {
         return Err(pyo3::exceptions::PyNotImplementedError::new_err(
             "GPU device support is planned for v0.3; use device='cpu'",
@@ -51,9 +52,11 @@ pub fn simulate<'py>(
     }
 
     let use_milstein = scheme.is_instance_of::<PyMilstein>();
-    if !use_milstein && !scheme.is_instance_of::<PyEuler>() {
+    let use_sri = scheme.is_instance_of::<PySri>();
+    let use_euler = scheme.is_instance_of::<PyEuler>();
+    if !use_milstein && !use_sri && !use_euler {
         return Err(pyo3::exceptions::PyTypeError::new_err(
-            "scheme must be euler() or milstein()",
+            "scheme must be euler(), milstein(), or sri()",
         ));
     }
 
@@ -66,12 +69,16 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else if use_sri {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::sri(),
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             } else {
@@ -80,17 +87,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
         }
         SDEKind::Gbm { mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::gbm(*mu, *sigma);
@@ -100,12 +102,16 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else if use_sri {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::sri(),
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             } else {
@@ -114,17 +120,12 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
         }
         SDEKind::Ou { theta, mu, sigma } => {
             let sde_rust = pathwise_core::process::markov::ou(*theta, *mu, *sigma);
@@ -134,12 +135,16 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::milstein(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else if use_sri {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::sri(),
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             } else {
@@ -148,30 +153,103 @@ pub fn simulate<'py>(
                         &sde_rust.drift,
                         &sde_rust.diffusion,
                         &pathwise_core::scheme::euler(),
-                        x0,
-                        t0,
-                        t1,
-                        n_paths,
-                        n_steps,
-                        seed,
+                        x0, t0, t1, n_paths, n_steps, seed,
                     )
                 })
             }
             .map_err(to_py_err)?;
-            Ok(numpy::PyArray2::from_owned_array_bound(py, result))
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
         }
-        SDEKind::Custom { drift, diffusion } => simulate_serial(
-            py,
-            drift,
-            diffusion,
-            use_milstein,
-            x0,
-            t0,
-            t1,
-            n_paths,
-            n_steps,
-            seed,
-        ),
+        SDEKind::Cir { kappa, theta, sigma } => {
+            // Feller condition already validated in cir() constructor; unwrap is safe here.
+            let sde_rust = pathwise_core::cir(*kappa, *theta, *sigma).map_err(to_py_err)?;
+            let mut result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein(),
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else if use_sri {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::sri(),
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            // Full-truncation: clip any discretization-induced negative values to 0.
+            // The CIR diffusion clips sqrt(x) to 0 for x < 0, but the stored state
+            // may still go slightly negative under Euler. Clip post-step to enforce
+            // the non-negativity constraint that holds in continuous time.
+            result.mapv_inplace(|v| if v < 0.0 { 0.0 } else { v });
+            Ok(numpy::PyArray2::from_owned_array_bound(py, result).into_any().unbind())
+        }
+        SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+            if use_sri {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "SRI requires scalar or diagonal noise; use milstein() or euler() for Heston",
+                ));
+            }
+            let sde_rust = pathwise_core::heston(*mu, *kappa, *theta, *xi, *rho);
+            // Initial state: [x0 for log-S, theta for V]
+            let x0_nd = nalgebra::SVector::<f64, 2>::from([x0, *theta]);
+            let result = if use_milstein {
+                py.allow_threads(|| {
+                    pathwise_core::simulate_nd::<2, _, _, _>(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::milstein_nd::<2>(),
+                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            } else {
+                py.allow_threads(|| {
+                    pathwise_core::simulate_nd::<2, _, _, _>(
+                        &sde_rust.drift,
+                        &sde_rust.diffusion,
+                        &pathwise_core::scheme::euler(),
+                        x0_nd, t0, t1, n_paths, n_steps, seed,
+                    )
+                })
+            }
+            .map_err(to_py_err)?;
+            Ok(PyArray3::from_owned_array_bound(py, result).into_any().unbind())
+        }
+        SDEKind::Custom { drift, diffusion } => {
+            if use_sri {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "SRI is not supported for custom Python-callable SDEs; use euler() or milstein()",
+                ));
+            }
+            let arr = simulate_serial(
+                py,
+                drift,
+                diffusion,
+                use_milstein,
+                x0,
+                t0,
+                t1,
+                n_paths,
+                n_steps,
+                seed,
+            )?;
+            Ok(arr.into_any().unbind())
+        }
     }
 }
 

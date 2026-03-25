@@ -28,6 +28,18 @@ pub(crate) enum SDEKind {
         mu: f64,
         sigma: f64,
     },
+    Cir {
+        kappa: f64,
+        theta: f64,
+        sigma: f64,
+    },
+    Heston {
+        mu: f64,
+        kappa: f64,
+        theta: f64,
+        xi: f64,
+        rho: f64,
+    },
     Custom {
         drift: PyObject,
         diffusion: PyObject,
@@ -44,6 +56,12 @@ impl std::fmt::Debug for SDEKind {
                     f,
                     "SDEKind::Ou {{ theta: {theta}, mu: {mu}, sigma: {sigma} }}"
                 )
+            }
+            SDEKind::Cir { kappa, theta, sigma } => {
+                write!(f, "SDEKind::Cir {{ kappa: {kappa}, theta: {theta}, sigma: {sigma} }}")
+            }
+            SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+                write!(f, "SDEKind::Heston {{ mu: {mu}, kappa: {kappa}, theta: {theta}, xi: {xi}, rho: {rho} }}")
             }
             SDEKind::Custom { .. } => write!(f, "SDEKind::Custom(<PyObject>)"),
         }
@@ -80,6 +98,24 @@ impl PySDE {
                     fmt_f64(*sigma)
                 )
             }
+            SDEKind::Cir { kappa, theta, sigma } => {
+                format!(
+                    "SDE(cir, kappa={}, theta={}, sigma={})",
+                    fmt_f64(*kappa),
+                    fmt_f64(*theta),
+                    fmt_f64(*sigma)
+                )
+            }
+            SDEKind::Heston { mu, kappa, theta, xi, rho } => {
+                format!(
+                    "SDE(heston, mu={}, kappa={}, theta={}, xi={}, rho={})",
+                    fmt_f64(*mu),
+                    fmt_f64(*kappa),
+                    fmt_f64(*theta),
+                    fmt_f64(*xi),
+                    fmt_f64(*rho)
+                )
+            }
             SDEKind::Custom { .. } => "SDE(custom)".to_string(),
         }
     }
@@ -112,5 +148,31 @@ pub fn ou(_py: Python<'_>, theta: f64, mu: f64, sigma: f64) -> PySDE {
 pub fn sde(_py: Python<'_>, drift: PyObject, diffusion: PyObject) -> PySDE {
     PySDE {
         kind: SDEKind::Custom { drift, diffusion },
+    }
+}
+
+/// Cox-Ingersoll-Ross: dX = kappa*(theta - X) dt + sigma*sqrt(X) dW
+///
+/// Requires strict Feller condition: 2*kappa*theta > sigma^2.
+/// Raises ValueError if the condition is violated.
+#[pyfunction]
+pub fn cir(kappa: f64, theta: f64, sigma: f64) -> PyResult<PySDE> {
+    // Delegate to pathwise_core which checks the Feller condition.
+    pathwise_core::cir(kappa, theta, sigma)
+        .map_err(crate::py_error::to_py_err)?;
+    Ok(PySDE {
+        kind: SDEKind::Cir { kappa, theta, sigma },
+    })
+}
+
+/// Heston stochastic volatility model.
+/// State: [log S, V]; simulate returns shape (n_paths, n_steps+1, 2).
+///
+/// d(log S) = (mu - V/2) dt + sqrt(V) dW1
+/// dV       = kappa * (theta - V) dt + xi * sqrt(V) * (rho * dW1 + sqrt(1-rho^2) * dW2)
+#[pyfunction]
+pub fn heston(mu: f64, kappa: f64, theta: f64, xi: f64, rho: f64) -> PySDE {
+    PySDE {
+        kind: SDEKind::Heston { mu, kappa, theta, xi, rho },
     }
 }

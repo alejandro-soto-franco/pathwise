@@ -12,5 +12,6 @@ pathwise-core = { path = "../pathwise-core" }
 pyo3 = { workspace = true }
 numpy = { workspace = true }
 ndarray = { workspace = true }
+nalgebra = { workspace = true }
 rand = { workspace = true }
 rand_distr = { workspace = true }

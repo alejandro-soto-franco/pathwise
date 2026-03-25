@@ -5,8 +5,8 @@ mod py_process;
 mod py_scheme;
 mod py_simulate;
 
-use py_process::{bm, gbm, ou, sde, PySDE};
-use py_scheme::{euler, milstein, PyEuler, PyMilstein};
+use py_process::{bm, cir, gbm, heston, ou, sde, PySDE};
+use py_scheme::{euler, milstein, sri, PyEuler, PyMilstein, PySri};
 use py_simulate::simulate;
 
 #[pymodule]
@@ -23,11 +23,15 @@ fn _pathwise(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(bm, m)?)?;
     m.add_function(wrap_pyfunction!(gbm, m)?)?;
     m.add_function(wrap_pyfunction!(ou, m)?)?;
+    m.add_function(wrap_pyfunction!(cir, m)?)?;
+    m.add_function(wrap_pyfunction!(heston, m)?)?;
     m.add_function(wrap_pyfunction!(sde, m)?)?;
     m.add_class::<PyEuler>()?;
     m.add_class::<PyMilstein>()?;
+    m.add_class::<PySri>()?;
     m.add_function(wrap_pyfunction!(euler, m)?)?;
     m.add_function(wrap_pyfunction!(milstein, m)?)?;
+    m.add_function(wrap_pyfunction!(sri, m)?)?;
     m.add_function(wrap_pyfunction!(simulate, m)?)?;
     Ok(())
 }
