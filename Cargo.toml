@@ -2,6 +2,14 @@
 resolver = "2"
 members = ["pathwise-core", "pathwise-geo", "pathwise-py"]
 
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/alejandro-soto-franco/pathwise"
+keywords = ["sde", "simulation", "stochastic", "finance", "riemannian"]
+categories = ["mathematics", "science", "simulation"]
+
 [workspace.dependencies]
 ndarray = "0.15"
 nalgebra = { version = "0.33", default-features = false, features = ["std"] }

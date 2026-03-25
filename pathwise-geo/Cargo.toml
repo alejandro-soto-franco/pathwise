@@ -1,10 +1,17 @@
 [package]
 name = "pathwise-geo"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Riemannian manifold SDE simulation (geodesic Euler/Milstein/SRI) on S^n, SO(n), SPD(n) via the cartan geometry library"
+documentation = "https://docs.rs/pathwise-geo"
+readme = "../README.md"
 
 [dependencies]
-pathwise-core = { path = "../pathwise-core" }
+pathwise-core = { path = "../pathwise-core", version = "0.2" }
 cartan-core = { path = "../../cartan/cartan-core", version = "0.1" }
 cartan-manifolds = { path = "../../cartan/cartan-manifolds", version = "0.1", default-features = false, features = ["std"] }
 nalgebra = { version = "0.33", default-features = false, features = ["std"] }
