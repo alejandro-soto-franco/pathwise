@@ -6,7 +6,7 @@
 
 **Architecture:** Generic `Scheme<S>` trait over state type `S`; const-generic nalgebra types for nD state and noise; `pathwise-geo` holds the cartan dependency so flat users pay no geometry overhead.
 
-**Tech stack:** Rust 2021, nalgebra 0.33, ndarray, rayon, rand/rand_distr, PyO3; cartan-core (pathwise-geo only).
+**Tech stack:** Rust 2021, nalgebra 0.33 (added to pathwise-core for nD types), ndarray, rayon, rand/rand_distr, PyO3; cartan-core (pathwise-geo only).
 
 ---
 
@@ -29,13 +29,42 @@ pub struct Increment<B> {
 dz = (dt / 2) * dw - sqrt(dt^3 / 12) * z2
 ```
 
+Derivation: `dZ = h*dW - I_{(0,1)}` where `I_{(0,1)} = integral_0^h s dW(s)`.
+Conditional on dW: `E[I_{(0,1)}|dW] = (h/2)*dW`, `Var[I_{(0,1)}|dW] = h^3/12`.
+So `I_{(0,1)} = (h/2)*dw + sqrt(h^3/12)*z2`, giving `dZ = (h/2)*dw - sqrt(h^3/12)*z2`.
+Verified: `E[dZ]=0`, `Var[dZ]=h^3/3`, `Cov(dW,dZ)=h^2/2`. Negative sign is correct.
+
 `simulate` always generates both `dw` and `dz`; schemes that do not use `dz` receive it and ignore it (zero runtime cost after inlining).
 
 ### Scheme trait
 
+The `State` trait requires algebraic operations needed by simulate and scheme steps:
+
+```rust
+pub trait State: Clone + Send + Sync + 'static
+    + Add<Output = Self>
+    + Mul<f64, Output = Self>
+    + Zero
+{}
+```
+
+`f64` satisfies this trivially. `SVector<f64, N>` satisfies it via nalgebra. Implementors
+of custom state types must provide these impls.
+
+The `NoiseIncrement` trait lets simulate generate noise without knowing the concrete noise type:
+
+```rust
+pub trait NoiseIncrement: Clone + Send + Sync + 'static {
+    /// Sample an Increment<Self> from an RNG given step size dt.
+    fn sample<R: Rng>(rng: &mut R, dt: f64) -> Increment<Self>;
+}
+```
+
+`f64` impl: scalar formula above. `SVector<f64, M>` impl: M independent scalar samples.
+
 ```rust
 pub trait Scheme<S: State>: Send + Sync {
-    type Noise: Send + Sync;
+    type Noise: NoiseIncrement;
 
     fn step<D, G>(
         &self,
@@ -51,6 +80,10 @@ pub trait Scheme<S: State>: Send + Sync {
         G: Diffusion<S, Self::Noise>;
 }
 ```
+
+The noise dimension M is fixed by each concrete `impl Scheme<SVector<f64, N>>` via
+`type Noise = SVector<f64, M>` — M is a parameter of the impl, not the trait. The
+Rust type system resolves M through the concrete impl chosen at each call site.
 
 ### Diffusion trait
 
@@ -94,7 +127,7 @@ dX = kappa * (theta - X) dt + sigma * sqrt(X) dW
 ```
 - Scalar; constructor `cir(kappa, theta, sigma) -> SDE<f64, ...>`.
 - `simulate` clips `x` to `0.0` (not NaN) when discretization produces negative values.
-- Feller condition `sigma^2 < 2 * kappa * theta` checked at construction; returns `Err(FellerViolation)` if violated (caller may ignore and proceed with clipping).
+- Feller condition checked at construction: strict inequality `2 * kappa * theta > sigma^2` required. At equality the boundary is instantaneously reflecting in continuous time but may produce clipping artefacts under discretization. Returns `Err(FellerViolation)` if `2*kappa*theta <= sigma^2`; caller may ignore and proceed — clipping ensures non-negativity regardless.
 
 **Heston**:
 ```
@@ -110,8 +143,9 @@ dV       = kappa * (theta - V) dt + xi * sqrt(V) * (rho * dW1 + sqrt(1-rho^2) * 
 ```
 dX = Theta * (mu - X) dt + L dW
 ```
-- N-dimensional; `L = chol(Sigma)` computed at construction.
-- Constructor `corr_ou<const N: usize>(theta_diag, mu, sigma_matrix) -> SDE<SVector<N>, ...>`.
+- N-dimensional; `L = chol(Sigma)` computed at construction time via nalgebra Cholesky.
+- Returns `Err(DimensionMismatch)` if `Sigma` is not N×N; panics at construction if `Sigma` is not positive-definite (nalgebra Cholesky failure).
+- Constructor `corr_ou<const N: usize>(theta_diag, mu, sigma_matrix) -> Result<SDE<SVector<N>, ...>, PathwiseError>`.
 
 ### Updated simulate
 
@@ -189,18 +223,29 @@ x_{n+1} = exp_{x_n}( f(x_n, t)*dt + g(x_n, t)*dW )
 Uses `cartan_core::Manifold::exp`. Keeps state exactly on the manifold at every step.
 
 **GeodesicMilstein** (strong order 1.0, scalar noise):
-Adds Stratonovich-to-Ito correction via cartan's `Connection` trait:
+Adds the Milstein correction term via the covariant derivative of the diffusion vector
+field `∇_g g`, approximated by finite difference using only `Manifold + ParallelTransport`:
+
 ```
-correction = -0.5 * Gamma(x_n)(g, g) * dt
-```
-where `Gamma` is computed via `cartan_core::Connection::riemannian_hessian_vector_product`.
-Full step:
-```
-x_{n+1} = exp_{x_n}( (f - 0.5*Gamma(g,g))*dt + g*dW + 0.5*g*Dg*g*(dW^2 - dt) )
+nabla_g g(x) ≈ (1/eps) * [pt_{exp_x(eps*g) -> x}( g(exp_x(eps*g)) ) - g(x)]
 ```
 
+where `pt_{y -> x}` denotes parallel transport from `y` back to `x` (cartan's
+`ParallelTransport::transport`). This avoids the need for explicit Christoffel symbols.
+Full step:
+
+```
+v_n = f(x_n)*dt + g(x_n)*dW + 0.5 * nabla_g g(x_n) * (dW^2 - dt)
+x_{n+1} = exp_{x_n}( v_n )
+```
+
+Requires: `Manifold + ParallelTransport`. Does NOT require `Connection` or `Curvature`.
+Finite-difference step `eps = sqrt(dt)` balances truncation and round-off error.
+
 **GeodesicSRI** (strong order 1.5, scalar noise):
-Extends GeodesicMilstein with the `dz` term. Requires `Manifold + Connection + Curvature`.
+Extends GeodesicMilstein with the `dz` iterated integral term. Requires
+`Manifold + ParallelTransport`. The additional term involves a second finite-difference
+evaluation of `∇_g g` weighted by `dz`.
 
 ### Process constructors
 
@@ -230,7 +275,11 @@ pub fn manifold_simulate<M, SC>(
 Returns `Vec<Vec<M::Point>>` (outer: paths, inner: time steps). A helper
 `paths_to_array(paths, manifold, ref_point)` flattens by projecting each point onto
 the tangent space at `ref_point` via `log`, yielding `Array3<f64>` of shape
-`(n_paths, n_steps+1, dim)` for downstream numerical use.
+`(n_paths, n_steps+1, dim)` for downstream numerical use. Default `ref_point` is `x0`
+(the simulation starting point). Points outside the injectivity radius of `ref_point`
+are mapped via `log` regardless — callers are responsible for choosing `ref_point`
+such that all path points remain within the injectivity radius, or for handling the
+resulting potentially large tangent coordinates.
 
 ---
 
@@ -244,12 +293,16 @@ the tangent space at `ref_point` via `log`, yielding `Array3<f64>` of shape
 enum SchemeKind { Euler, Milstein, Sri }
 enum ProcessKind {
     Bm,
-    Gbm { mu: f64, sigma: f64 },
-    Ou  { theta: f64, mu: f64, sigma: f64 },
-    Cir { kappa: f64, theta: f64, sigma: f64 },
+    Gbm    { mu: f64, sigma: f64 },
+    Ou     { theta: f64, mu: f64, sigma: f64 },
+    Cir    { kappa: f64, theta: f64, sigma: f64 },
     Heston { mu: f64, kappa: f64, theta: f64, xi: f64, rho: f64 },
+    CorrOu { theta: f64, mu: Vec<f64>, sigma_flat: Vec<f64>, n: usize },
 }
 ```
+
+Existing BM, GBM, and OU process structs are migrated to the new generic `Scheme<S>` trait
+as part of this update. They continue to work identically from the Python side.
 
 Invalid combinations raise `ValueError` with an explicit message:
 ```
@@ -265,6 +318,7 @@ pathwise.sri()
 # Processes
 pathwise.cir(kappa, theta, sigma)
 pathwise.heston(mu, kappa, theta, xi, rho)
+pathwise.corr_ou(theta, mu_arr, sigma_matrix)  # mu_arr: list/np.ndarray, sigma_matrix: 2D
 
 # Output shapes
 # simulate(gbm(...),    scheme, ...) -> np.ndarray (n_paths, n_steps+1)
@@ -289,7 +343,7 @@ Custom nD callables (serial path): `SDEKind::CustomNd` accepts Python callables
 
 ### pathwise-core (tests/convergence.rs)
 
-- `sri_strong_order_on_gbm`: log-log regression, expected order in `[1.2, 1.8]`, 8000 paths, step counts `[25, 50, 100, 200, 400]`.
+- `sri_strong_order_on_gbm`: common-noise log-log regression (same dW sequence at each refinement level, paths matched between step counts), expected order in `[1.2, 1.8]`, 8000 paths, step counts `[25, 50, 100, 200, 400]`.
 - `sri_stronger_than_milstein_strong`: SRI error < Milstein error at N=50 steps.
 - `cir_stays_nonnegative`: 1000 paths, Feller condition marginally violated, assert all values `>= 0`.
 - `cir_mean_exact`: `E[X_T] = theta + (x0 - theta)*exp(-kappa*T)`, within 2% at 20k paths.
@@ -303,7 +357,7 @@ Custom nD callables (serial path): `SDEKind::CustomNd` accepts Python callables
 - `geodesic_euler_stays_on_sphere`: 500 paths on S², all points satisfy `|x| approx 1` to 1e-6.
 - `geodesic_euler_stays_on_so3`: all path points satisfy `R^T R approx I` and `det(R) approx 1` to 1e-6.
 - `ou_on_spd_stays_positive_definite`: all SPD path points pass eigenvalue positivity check.
-- `ou_on_manifold_mean_reverts`: OU on S² converges toward `mu_point` over long time, verified by geodesic distance decreasing on average.
+- `ou_on_manifold_mean_reverts`: OU on S² started at the antipodal point of `mu_point`; mean geodesic distance (over 500 paths) at T=2.0 is less than mean geodesic distance at T=0.1, tolerance 5%.
 - `paths_to_array_shape`: shape matches `(n_paths, n_steps+1, dim)`.
 
 ### pathwise-py (tests/test_schemes.py)
