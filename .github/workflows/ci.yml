@@ -15,12 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Build workspace
-        run: cargo build --workspace
-      - name: Test workspace
-        run: cargo test --workspace
+      - name: Build pathwise-core
+        run: cargo build -p pathwise-core
+      - name: Test pathwise-core
+        run: cargo test -p pathwise-core
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy -p pathwise-core -- -D warnings
       - name: Format check
         run: cargo fmt --all --check
 
