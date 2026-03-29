@@ -98,12 +98,12 @@ variance  = paths[:, :, 1]
 | Function | SDE | Notes |
 |----------|-----|-------|
 | `pw.bm()` | $dX = dW$ | Standard Brownian motion |
-| `pw.gbm(mu, sigma)` | $dX = \mu X\,dt + \sigma X\,dW$ | Geometric Brownian motion |
-| `pw.ou(theta, mu, sigma)` | $dX = \theta(\mu - X)\,dt + \sigma\,dW$ | Ornstein-Uhlenbeck |
-| `pw.cir(kappa, theta, sigma)` | $dX = \kappa(\theta - X)\,dt + \sigma\sqrt{X}\,dW$ | Cox-Ingersoll-Ross; raises `ValueError` if Feller violated |
+| `pw.gbm(mu, sigma)` | $dX = \mu Xdt + \sigma X dW$ | Geometric Brownian motion |
+| `pw.ou(theta, mu, sigma)` | $dX = \theta(\mu - X) dt + \sigmadW$ | Ornstein-Uhlenbeck |
+| `pw.cir(kappa, theta, sigma)` | $dX = \kappa(\theta - X) dt + \sigma\sqrt{X}dW$ | Cox-Ingersoll-Ross; raises `ValueError` if Feller violated |
 | `pw.heston(mu, kappa, theta, xi, rho)` | coupled log-price + CIR variance | Returns `(n_paths, n_steps+1, 2)` array |
 | `pw.corr_ou(theta, mu_vec, sigma_flat)` | N-dim correlated OU | `mu_vec`: list of length N; `sigma_flat`: flattened N×N covariance; Python bindings: N=2 only |
-| `pw.sde(drift, diffusion)` | $dX = f(X,t)\,dt + g(X,t)\,dW$ | Custom Python callables, runs serially |
+| `pw.sde(drift, diffusion)` | $dX = f(X,t)dt + g(X,t) dW$ | Custom Python callables, runs serially |
 
 ### Schemes
 
