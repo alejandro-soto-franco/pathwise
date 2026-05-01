@@ -30,3 +30,6 @@ docs/superpowers/
 .DS_Store
 Thumbs.db
 docs/superpowers/
+
+# nested cargo target dirs in sub-crates
+**/target/
