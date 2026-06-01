@@ -33,3 +33,4 @@ docs/superpowers/
 
 # nested cargo target dirs in sub-crates
 **/target/
+pathwise-geo/target
