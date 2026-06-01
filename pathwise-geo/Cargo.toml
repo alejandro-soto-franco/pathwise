@@ -1,6 +1,6 @@
 [package]
 name = "pathwise-geo"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/alejandro-soto-franco/pathwise"
@@ -11,10 +11,10 @@ documentation = "https://docs.rs/pathwise-geo"
 readme = "../README.md"
 
 [dependencies]
-pathwise-core = { path = "../pathwise-core", version = "0.2" }
-cartan-core = { path = "../../cartan/cartan-core", version = "0.1" }
-cartan-manifolds = { path = "../../cartan/cartan-manifolds", version = "0.1", default-features = false, features = ["std"] }
-nalgebra = { version = "0.33", default-features = false, features = ["std"] }
+pathwise-core = { path = "../pathwise-core", version = "0.3" }
+cartan-core = { path = "../../cartan/cartan-core", version = "0.6" }
+cartan-manifolds = { path = "../../cartan/cartan-manifolds", version = "0.6", default-features = false, features = ["std"] }
+nalgebra = { version = "0.35", default-features = false, features = ["std"] }
 rayon = "1"
 rand = { version = "0.9", default-features = false, features = ["std", "std_rng"] }
 rand_distr = { version = "0.5" }

@@ -115,7 +115,7 @@ fn euler_strong_order_on_gbm() {
         .iter()
         .map(|&n_steps| {
             strong_error(
-                |dw, mu, sigma, x0, dt| gbm_euler_path(dw, mu, sigma, x0, dt),
+                gbm_euler_path,
                 n_steps,
                 n_paths,
                 mu,
@@ -153,7 +153,7 @@ fn milstein_strong_order_on_gbm() {
         .iter()
         .map(|&n_steps| {
             strong_error(
-                |dw, mu, sigma, x0, dt| gbm_milstein_path(dw, mu, sigma, x0, dt),
+                gbm_milstein_path,
                 n_steps,
                 n_paths,
                 mu,
@@ -187,7 +187,7 @@ fn milstein_stronger_than_euler_strong() {
     let n_steps = 50;
 
     let euler_err = strong_error(
-        |dw, mu, sigma, x0, dt| gbm_euler_path(dw, mu, sigma, x0, dt),
+        gbm_euler_path,
         n_steps,
         n_paths,
         mu,
@@ -196,7 +196,7 @@ fn milstein_stronger_than_euler_strong() {
         t1,
     );
     let milstein_err = strong_error(
-        |dw, mu, sigma, x0, dt| gbm_milstein_path(dw, mu, sigma, x0, dt),
+        gbm_milstein_path,
         n_steps,
         n_paths,
         mu,

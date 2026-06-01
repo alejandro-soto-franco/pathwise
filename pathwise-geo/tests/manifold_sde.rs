@@ -3,6 +3,7 @@ use nalgebra::{SMatrix, SVector};
 use pathwise_geo::{GeodesicEuler, GeodesicMilstein, GeodesicSRI, ManifoldSDE, manifold_simulate, manifold_simulate_with_scheme};
 use pathwise_geo::ou_on_with_diffusion;
 
+#[allow(clippy::type_complexity)]
 fn sphere_sde() -> ManifoldSDE<
     Sphere<3>,
     impl Fn(&SVector<f64, 3>, f64) -> SVector<f64, 3> + Send + Sync,

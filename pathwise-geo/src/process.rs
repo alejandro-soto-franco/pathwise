@@ -63,6 +63,7 @@ where
 /// Placeholder for API compatibility -- panics if the diffusion closure is called.
 /// Use `brownian_motion_on_with_diffusion` instead.
 #[deprecated(note = "Use brownian_motion_on_with_diffusion; generic Manifold has no frame field")]
+#[allow(clippy::type_complexity)]
 pub fn brownian_motion_on<M: Manifold + Clone>(
     manifold: M,
 ) -> ManifoldSDE<
