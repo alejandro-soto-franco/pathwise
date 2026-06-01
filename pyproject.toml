@@ -27,3 +27,6 @@ python-source = "python"
 module-name = "pathwise._pathwise"
 manifest-path = "pathwise-py/Cargo.toml"
 features = []
+
+[tool.pyrefly]
+# Enables full Pyrefly type checking; run with `uvc`. See ~/.claude/rules/pyrefly.md
