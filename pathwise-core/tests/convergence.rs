@@ -113,17 +113,7 @@ fn euler_strong_order_on_gbm() {
     let dts: Vec<f64> = step_counts.iter().map(|&n| t1 / n as f64).collect();
     let errors: Vec<f64> = step_counts
         .iter()
-        .map(|&n_steps| {
-            strong_error(
-                gbm_euler_path,
-                n_steps,
-                n_paths,
-                mu,
-                sigma,
-                x0,
-                t1,
-            )
-        })
+        .map(|&n_steps| strong_error(gbm_euler_path, n_steps, n_paths, mu, sigma, x0, t1))
         .collect();
 
     let order = convergence_order(&dts, &errors);
@@ -151,17 +141,7 @@ fn milstein_strong_order_on_gbm() {
     let dts: Vec<f64> = step_counts.iter().map(|&n| t1 / n as f64).collect();
     let errors: Vec<f64> = step_counts
         .iter()
-        .map(|&n_steps| {
-            strong_error(
-                gbm_milstein_path,
-                n_steps,
-                n_paths,
-                mu,
-                sigma,
-                x0,
-                t1,
-            )
-        })
+        .map(|&n_steps| strong_error(gbm_milstein_path, n_steps, n_paths, mu, sigma, x0, t1))
         .collect();
 
     let order = convergence_order(&dts, &errors);
@@ -186,24 +166,8 @@ fn milstein_stronger_than_euler_strong() {
     let n_paths = 10000;
     let n_steps = 50;
 
-    let euler_err = strong_error(
-        gbm_euler_path,
-        n_steps,
-        n_paths,
-        mu,
-        sigma,
-        x0,
-        t1,
-    );
-    let milstein_err = strong_error(
-        gbm_milstein_path,
-        n_steps,
-        n_paths,
-        mu,
-        sigma,
-        x0,
-        t1,
-    );
+    let euler_err = strong_error(gbm_euler_path, n_steps, n_paths, mu, sigma, x0, t1);
+    let milstein_err = strong_error(gbm_milstein_path, n_steps, n_paths, mu, sigma, x0, t1);
 
     println!("  Euler strong err = {:.6}", euler_err);
     println!(
