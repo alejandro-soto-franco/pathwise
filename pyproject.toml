@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pathwise-sde"
-version = "0.2.0"
+dynamic = ["version"]
 description = "High-performance SDE simulation: Rust core, Python API"
 readme = "README.md"
 license = { file = "LICENSE" }
