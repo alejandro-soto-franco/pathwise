@@ -198,7 +198,10 @@ def test_bm_increments_are_normal():
     paths = pw.simulate(pw.bm(), pw.euler(),
                         n_paths=n_paths, n_steps=n_steps, t1=t1, x0=0.0)
     increments = np.diff(paths, axis=1).ravel()
-    ks_stat, p_value = stats.kstest(increments, "norm", args=(0, math.sqrt(dt)))
+    # Frozen distribution rather than the name-and-args form: recent scipy
+    # dispatches ("norm", args) onto the ndtr ufunc, which accepts no loc or
+    # scale and raises a TypeError.
+    ks_stat, p_value = stats.kstest(increments, stats.norm(0, math.sqrt(dt)).cdf)
     print(f"\nBM increments KS: stat={ks_stat:.4f}, p={p_value:.4f}")
     assert p_value > 0.01, f"BM increments fail KS normality test: p={p_value:.4f}"
 
@@ -247,8 +250,9 @@ def test_gbm_terminal_is_lognormal():
     log_xT = np.log(paths[:, -1])
     exact_mean_log = math.log(x0) + (mu - 0.5 * sigma**2) * t1
     exact_std_log  = sigma * math.sqrt(t1)
-    ks_stat, p_value = stats.kstest(log_xT, "norm",
-                                    args=(exact_mean_log, exact_std_log))
+    ks_stat, p_value = stats.kstest(
+        log_xT, stats.norm(exact_mean_log, exact_std_log).cdf
+    )
     print(f"\nGBM log-normality KS: stat={ks_stat:.4f}, p={p_value:.4f}")
     print(f"  log(X_T): mean={log_xT.mean():.4f} (exact {exact_mean_log:.4f}), "
           f"std={log_xT.std():.4f} (exact {exact_std_log:.4f})")
