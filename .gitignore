@@ -23,13 +23,10 @@ build/
 *.swp
 *.swo
 
-# Superpowers plans/specs
-docs/superpowers/
 
 # OS
 .DS_Store
 Thumbs.db
-docs/superpowers/
 
 # nested cargo target dirs in sub-crates
 **/target/
