@@ -151,16 +151,16 @@ pw.ConvergenceError      # raised on inference failures (future versions)
 
 The test suite verifies convergence orders against analytic benchmarks:
 
-- **Euler strong order** measured at 0.49 (expected $\tfrac{1}{2}$) on GBM via common-noise regression
-- **Milstein strong order** measured at 0.98 (expected $1$) on GBM
-- **SRI strong order** measured at ~1.5 (expected $\tfrac{3}{2}$) on GBM
-- **GBM mean/variance** match $\mathbb{E}[X_T] = x_0 e^{\mu T}$ and the exact second moment formula
-- **OU conditional moments** match analytic formulas
-- **CIR non-negativity** verified; moments checked against closed-form
-- **BM increments** pass Kolmogorov-Smirnov normality test ($\mathcal{N}(0, \Delta t)$)
-- **BM quadratic variation** converges to $T$
-- **GBM log-normality** verified via KS test on $\log X_T$
-- **European call price** matches Black-Scholes within 1%
+- Euler strong order measured at 0.49 (expected $\tfrac{1}{2}$) on GBM via common-noise regression
+- Milstein strong order measured at 0.98 (expected $1$) on GBM
+- SRI strong order measured at ~1.5 (expected $\tfrac{3}{2}$) on GBM
+- GBM mean/variance match $\mathbb{E}[X_T] = x_0 e^{\mu T}$ and the exact second moment formula
+- OU conditional moments match analytic formulas
+- CIR non-negativity verified; moments checked against closed-form
+- BM increments pass Kolmogorov-Smirnov normality test ($\mathcal{N}(0, \Delta t)$)
+- BM quadratic variation converges to $T$
+- GBM log-normality verified via KS test on $\log X_T$
+- European call price matches Black-Scholes within 1%
 
 Run the full suite:
 
